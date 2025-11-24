@@ -2,16 +2,16 @@ extends Resource
 class_name FKEvent
 
 func get_id() -> String:
-    return ""
+	return ""
 
 func get_name() -> String:
-    return ""
+	return ""
 
 func get_supported_types() -> Array[String]:
-    return []
+	return []
 
 func get_inputs() -> Array:
-    return []
+	return []
 
 func poll(node: Node, inputs: Dictionary = {}) -> bool:
-    return false
+	return false
