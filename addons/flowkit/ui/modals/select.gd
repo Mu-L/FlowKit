@@ -6,9 +6,15 @@ signal node_selected(node_path: String, node_class: String)
 var editor_interface: EditorInterface
 var available_events: Array = []
 
-@onready var item_list := $ItemList
+@onready var search_box := $VBoxContainer/SearchBox
+@onready var item_list := $VBoxContainer/ItemList
+
+var _all_items_cache: Array = []
 
 func _ready() -> void:
+	if search_box:
+		search_box.text_changed.connect(_on_search_text_changed)
+		
 	if item_list:
 		item_list.item_activated.connect(_on_item_activated)
 		item_list.item_selected.connect(_on_item_selected)
@@ -54,50 +60,85 @@ func populate_from_scene(scene_root: Node) -> void:
 	if not item_list:
 		return
 	
-	item_list.clear()
+	_all_items_cache.clear()
 	
 	# Add System option at the top
-	item_list.add_item("System")
-	var system_index = item_list.item_count - 1
-	item_list.set_item_metadata(system_index, "System")
+	var system_icon = null
 	if editor_interface:
-		var icon = editor_interface.get_base_control().get_theme_icon("Node", "EditorIcons")
-		if icon:
-			item_list.set_item_icon(system_index, icon)
+		system_icon = editor_interface.get_base_control().get_theme_icon("Node", "EditorIcons")
+		
+	_all_items_cache.append({
+		"display_name": "System",
+		"metadata": "System",
+		"icon": system_icon,
+		"disabled": false,
+		"indentation": 0,
+		"path": "System"
+	})
 	
-	if not scene_root:
-		return
-	
-	_add_node_recursive(scene_root, "", scene_root)
+	if scene_root:
+		_add_node_recursive(scene_root, scene_root, 0)
+		
+	_update_list()
 
-func _add_node_recursive(node: Node, prefix: String, scene_root: Node) -> void:
+func _add_node_recursive(node: Node, scene_root: Node, depth: int) -> void:
 	var node_name = node.name
-	var display_name = prefix + node_name
 	var node_class = node.get_class()
-	
-	# Add the node to the list
-	item_list.add_item(display_name)
-	var index = item_list.item_count - 1
 	
 	# Store the path relative to the scene root
 	var relative_path = scene_root.get_path_to(node)
-	item_list.set_item_metadata(index, str(relative_path))
 	
 	# Check if any event supports this node type
 	var has_compatible_event = _has_compatible_event(node_class)
-	if not has_compatible_event:
-		item_list.set_item_disabled(index, true)
-		item_list.set_item_custom_fg_color(index, Color(0.5, 0.5, 0.5, 0.7))
 	
-	# Get and set the node's icon from the editor
+	var icon = null
 	if editor_interface:
-		var icon = editor_interface.get_base_control().get_theme_icon(node.get_class(), "EditorIcons")
-		if icon:
-			item_list.set_item_icon(index, icon)
+		icon = editor_interface.get_base_control().get_theme_icon(node.get_class(), "EditorIcons")
 	
-	# Add children recursively with indentation
+	_all_items_cache.append({
+		"display_name": node_name,
+		"metadata": str(relative_path),
+		"icon": icon,
+		"disabled": not has_compatible_event,
+		"indentation": depth,
+		"path": str(relative_path)
+	})
+	
+	# Add children recursively
 	for child in node.get_children():
-		_add_node_recursive(child, prefix + "  ", scene_root)
+		_add_node_recursive(child, scene_root, depth + 1)
+
+func _update_list(filter_text: String = "") -> void:
+	item_list.clear()
+	var filter_lower = filter_text.to_lower()
+	
+	for item in _all_items_cache:
+		var match_search = filter_text.is_empty() or filter_lower in item["path"].to_lower() or filter_lower in item["display_name"].to_lower()
+		
+		if match_search:
+			var display_text = item["display_name"]
+			
+			if not filter_text.is_empty() and item["metadata"] != "System":
+				# Show full path when searching
+				display_text = item["path"]
+			else:
+				# Show indented name when not searching
+				display_text = "  ".repeat(item["indentation"]) + display_text
+				
+			item_list.add_item(display_text)
+			var index = item_list.item_count - 1
+			
+			item_list.set_item_metadata(index, item["metadata"])
+			
+			if item["icon"]:
+				item_list.set_item_icon(index, item["icon"])
+				
+			if item["disabled"]:
+				item_list.set_item_disabled(index, true)
+				item_list.set_item_custom_fg_color(index, Color(0.5, 0.5, 0.5, 0.7))
+
+func _on_search_text_changed(new_text: String) -> void:
+	_update_list(new_text)
 
 func _has_compatible_event(node_class: String) -> bool:
 	"""Check if any available event supports this node type."""
@@ -166,3 +207,8 @@ func _get_node_from_path(node_path_str: String) -> Node:
 func _on_item_selected(index: int) -> void:
 	# Optional: handle single click if needed
 	pass
+
+func _on_popup_hide() -> void:
+	if search_box:
+		search_box.clear()
+

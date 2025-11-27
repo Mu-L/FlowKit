@@ -7,9 +7,15 @@ var selected_node_path: String = ""
 var selected_node_class: String = ""
 var available_events: Array = []
 
-@onready var item_list := $ItemList
+@onready var search_box := $VBoxContainer/SearchBox
+@onready var item_list := $VBoxContainer/ItemList
+
+var _all_items_cache: Array = []
 
 func _ready() -> void:
+	if search_box:
+		search_box.text_changed.connect(_on_search_text_changed)
+		
 	if item_list:
 		item_list.item_activated.connect(_on_item_activated)
 	
@@ -56,7 +62,7 @@ func populate_events(node_path: String, node_class: String) -> void:
 	if not item_list:
 		return
 	
-	item_list.clear()
+	_all_items_cache.clear()
 	
 	# Filter events that support this node type
 	for event in available_events:
@@ -68,22 +74,42 @@ func populate_events(node_path: String, node_class: String) -> void:
 				var event_name = event.get_name()
 				var event_id = event.get_id()
 				
-				item_list.add_item(event_name)
-				var index = item_list.item_count - 1
-				item_list.set_item_metadata(index, event_id)
+				_all_items_cache.append({
+					"name": event_name,
+					"metadata": event_id
+				})
 		elif event.has_method("get_events_for"):
 			# Old FKEventProvider pattern
 			var supported_types = event.get_supported_types()
 			if _is_node_compatible(node_class, supported_types):
 				var events_list = event.get_events_for(null)
 				for event_data in events_list:
-					item_list.add_item(event_data["name"])
-					var index = item_list.item_count - 1
-					item_list.set_item_metadata(index, event_data["id"])
+					_all_items_cache.append({
+						"name": event_data["name"],
+						"metadata": event_data["id"]
+					})
+	
+	_update_list()
+
+func _update_list(filter_text: String = "") -> void:
+	item_list.clear()
+	var filter_lower = filter_text.to_lower()
+	
+	for item in _all_items_cache:
+		if filter_text.is_empty() or filter_lower in item["name"].to_lower():
+			item_list.add_item(item["name"])
+			var index = item_list.item_count - 1
+			item_list.set_item_metadata(index, item["metadata"])
 	
 	if item_list.item_count == 0:
-		item_list.add_item("No events available for this node type")
+		if filter_text.is_empty():
+			item_list.add_item("No events available for this node type")
+		else:
+			item_list.add_item("No events found")
 		item_list.set_item_disabled(0, true)
+
+func _on_search_text_changed(new_text: String) -> void:
+	_update_list(new_text)
 
 func _is_node_compatible(node_class: String, supported_types: Array) -> bool:
 	"""Check if a node class is compatible with the supported types."""
@@ -123,3 +149,8 @@ func _on_item_activated(index: int) -> void:
 	print("Event selected: ", event_id, " for node: ", selected_node_path, " with inputs: ", event_inputs)
 	event_selected.emit(selected_node_path, event_id, event_inputs)
 	hide()
+
+func _on_popup_hide() -> void:
+	if search_box:
+		search_box.clear()
+

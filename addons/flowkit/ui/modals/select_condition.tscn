@@ -11,7 +11,7 @@ borderless = false
 keep_title_visible = true
 script = ExtResource("1_condition")
 
-[node name="ItemList" type="ItemList" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -21,5 +21,11 @@ offset_right = -4.0
 offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
-size_flags_horizontal = 3
+
+[node name="SearchBox" type="LineEdit" parent="VBoxContainer"]
+layout_mode = 2
+placeholder_text = "Search..."
+
+[node name="ItemList" type="ItemList" parent="VBoxContainer"]
+layout_mode = 2
 size_flags_vertical = 3

@@ -7,9 +7,15 @@ var selected_node_path: String = ""
 var selected_node_class: String = ""
 var available_conditions: Array = []
 
-@onready var item_list := $ItemList
+@onready var search_box := $VBoxContainer/SearchBox
+@onready var item_list := $VBoxContainer/ItemList
+
+var _all_items_cache: Array = []
 
 func _ready() -> void:
+	if search_box:
+		search_box.text_changed.connect(_on_search_text_changed)
+		
 	if item_list:
 		item_list.item_activated.connect(_on_item_activated)
 	
@@ -56,7 +62,7 @@ func populate_conditions(node_path: String, node_class: String) -> void:
 	if not item_list:
 		return
 	
-	item_list.clear()
+	_all_items_cache.clear()
 	
 	# Filter conditions that support this node type
 	for condition in available_conditions:
@@ -65,13 +71,32 @@ func populate_conditions(node_path: String, node_class: String) -> void:
 			var condition_name = condition.get_name()
 			var condition_id = condition.get_id()
 			
-			item_list.add_item(condition_name)
+			_all_items_cache.append({
+				"name": condition_name,
+				"metadata": {"id": condition_id, "inputs": condition.get_inputs()}
+			})
+			
+	_update_list()
+
+func _update_list(filter_text: String = "") -> void:
+	item_list.clear()
+	var filter_lower = filter_text.to_lower()
+	
+	for item in _all_items_cache:
+		if filter_text.is_empty() or filter_lower in item["name"].to_lower():
+			item_list.add_item(item["name"])
 			var index = item_list.item_count - 1
-			item_list.set_item_metadata(index, {"id": condition_id, "inputs": condition.get_inputs()})
+			item_list.set_item_metadata(index, item["metadata"])
 	
 	if item_list.item_count == 0:
-		item_list.add_item("No conditions available for this node type")
+		if filter_text.is_empty():
+			item_list.add_item("No conditions available for this node type")
+		else:
+			item_list.add_item("No conditions found")
 		item_list.set_item_disabled(0, true)
+
+func _on_search_text_changed(new_text: String) -> void:
+	_update_list(new_text)
 
 func _is_node_compatible(node_class: String, supported_types: Array) -> bool:
 	"""Check if a node class is compatible with the supported types."""
@@ -105,3 +130,8 @@ func _on_item_activated(index: int) -> void:
 	print("Condition selected: ", condition_id, " for node: ", selected_node_path)
 	condition_selected.emit(selected_node_path, condition_id, inputs)
 	hide()
+
+func _on_popup_hide() -> void:
+	if search_box:
+		search_box.clear()
+
