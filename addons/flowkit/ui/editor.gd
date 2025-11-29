@@ -416,6 +416,7 @@ func _connect_event_row_signals(row) -> void:
 	row.add_condition_requested.connect(_on_row_add_condition.bind(row))
 	row.add_action_requested.connect(_on_row_add_action.bind(row))
 	row.selected.connect(_on_row_selected)
+	row.data_changed.connect(_save_sheet)
 
 # === Menu Button Handlers ===
 

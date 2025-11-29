@@ -59,6 +59,7 @@ func _on_gui_input(event: InputEvent) -> void:
 					context_menu.set_item_checked(2, condition_data.negated)
 				context_menu.position = DisplayServer.mouse_get_position()
 				context_menu.popup()
+				get_viewport().set_input_as_handled()
 
 func _on_context_menu_id_pressed(id: int) -> void:
 	match id:

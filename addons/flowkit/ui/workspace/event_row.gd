@@ -10,6 +10,7 @@ signal add_action_requested(event_row)
 signal condition_selected(condition_node)
 signal action_selected(action_node)
 signal selected(block_node)
+signal data_changed()
 
 # Data
 var event_data: FKEventBlock
@@ -209,6 +210,7 @@ func _on_condition_item_delete(item) -> void:
 		if idx >= 0:
 			event_data.conditions.remove_at(idx)
 			_update_conditions()
+			data_changed.emit()
 
 func _on_condition_item_negate(item) -> void:
 	var cond_data = item.get_condition_data()
@@ -227,6 +229,7 @@ func _on_action_item_delete(item) -> void:
 		if idx >= 0:
 			event_data.actions.remove_at(idx)
 			_update_actions()
+			data_changed.emit()
 
 func add_condition(condition_data: FKEventCondition) -> void:
 	if event_data:
