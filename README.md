@@ -240,5 +240,3 @@ Open an issue on GitHub for questions or bugs, alternatively you can ask in the 
 ---
 
 **Made with ❤️ for the Godot community by LexianDEV**
-
-```
