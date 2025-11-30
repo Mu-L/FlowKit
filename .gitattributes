@@ -6,4 +6,4 @@
 /addons/flowkit/saved/event_sheet/** export-ignore
 
 # Ignore auto-generated files
-/addons/flowkit/gen_*.gd* export-ignore
+/addons/flowkit/gen_*.gd** export-ignore
