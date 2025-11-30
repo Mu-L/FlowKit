@@ -1,13 +1,14 @@
-# Normalize line endings for all files that Git considers text files.
+# Normalize text files
 * text=auto eol=lf
 
-# Only include the addons folder when downloading from the Asset Library.
-/**        export-ignore
-/addons    !export-ignore
-/addons/** !export-ignore
+# Ignore everything by default in zip exports
+* export-ignore
 
-# Ignore demo files from addons/flowkit/demos
+# Explicitly include the addons folder
+/addons export-ignore=false
+/addons/** export-ignore=false
+
+# But still exclude demo and generated files
 /addons/flowkit/demos/** export-ignore
-
-# Ignore demo sheets from addons/flowkit/saved
 /addons/flowkit/saved/event_sheet/** export-ignore
+/addons/flowkit/gen_*.gd* export-ignore
