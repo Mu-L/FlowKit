@@ -406,9 +406,9 @@ func get_inputs() -> Array:
 	return %s
 
 # Signal-based events require connection management
-var _connected_nodes: Dictionary = {}
+var _connected_nodes: Dictionary = {}  # node -> {block_ids: {block_id -> bool}}
 
-func poll(node: Node, inputs: Dictionary = {}) -> bool:
+func poll(node: Node, inputs: Dictionary = {}, block_id: String = "") -> bool:
 	if not node:
 		return false
 	
@@ -416,22 +416,25 @@ func poll(node: Node, inputs: Dictionary = {}) -> bool:
 	if not _connected_nodes.has(node):
 		if node.has_signal("%s"):
 			node.%s.connect(_on_signal_fired.bind(node))
-			_connected_nodes[node] = {"fired": false, "args": {}}
+			_connected_nodes[node] = {"block_ids": {}}
 		else:
 			return false
 	
-	# Check if signal fired this frame
+	# Check if signal fired for this specific block_id
 	var data = _connected_nodes[node]
-	if data.fired:
-		data.fired = false
+	if block_id and data.block_ids.has(block_id) and data.block_ids[block_id]:
+		data.block_ids[block_id] = false
 		return true
 	
 	return false
 
 func _on_signal_fired(%s) -> void:
 	if _connected_nodes.has(bound_node):
-		_connected_nodes[bound_node].fired = true
-""" % [
+		# Mark all block_ids as having fired
+		for bid in _connected_nodes[bound_node].block_ids.keys():
+			_connected_nodes[bound_node].block_ids[bid] = true
+		# Also track that signal fired for new block_ids
+		_connected_nodes[bound_node]["signal_fired"] = true""" % [
 		event_id,
 		event_name,
 		node_type,

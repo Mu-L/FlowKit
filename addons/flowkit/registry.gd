@@ -109,31 +109,35 @@ func _scan_directory_recursive(path: String, array: Array) -> void:
 	
 	dir.list_dir_end()
 
-func poll_event(event_id: String, node: Node, inputs: Dictionary = {}) -> bool:
+func poll_event(event_id: String, node: Node, inputs: Dictionary = {}, block_id: String = "") -> bool:
 	for provider in event_providers:
 		if provider.has_method("get_id") and provider.get_id() == event_id:
 			if provider.has_method("poll"):
 				# Evaluate expressions in inputs before polling
 				var evaluated_inputs: Dictionary = FKExpressionEvaluator.evaluate_inputs(inputs, node)
-				return provider.poll(node, evaluated_inputs)
+				return provider.poll(node, evaluated_inputs, block_id)
 	return false
 
-func check_condition(condition_id: String, node: Node, inputs: Dictionary, negated: bool = false) -> bool:
+func check_condition(condition_id: String, node: Node, inputs: Dictionary, negated: bool = false, scene_root: Node = null) -> bool:
 	for provider in condition_providers:
 		if provider.has_method("get_id") and provider.get_id() == condition_id:
 			if provider.has_method("check"):
 				# Evaluate expressions in inputs before checking
-				var evaluated_inputs: Dictionary = FKExpressionEvaluator.evaluate_inputs(inputs, node)
+				# Use scene_root as context if provided, otherwise use the node
+				var context = scene_root if scene_root else node
+				var evaluated_inputs: Dictionary = FKExpressionEvaluator.evaluate_inputs(inputs, context)
 				var result = provider.check(node, evaluated_inputs)
 				return not result if negated else result
 	return false
 
-func execute_action(action_id: String, node: Node, inputs: Dictionary) -> void:
+func execute_action(action_id: String, node: Node, inputs: Dictionary, scene_root: Node = null) -> void:
 	for provider in action_providers:
 		if provider.has_method("get_id") and provider.get_id() == action_id:
 			if provider.has_method("execute"):
 				# Evaluate expressions in inputs before executing
-				var evaluated_inputs: Dictionary = FKExpressionEvaluator.evaluate_inputs(inputs, node)
+				# Use scene_root as context if provided, otherwise use the node
+				var context = scene_root if scene_root else node
+				var evaluated_inputs: Dictionary = FKExpressionEvaluator.evaluate_inputs(inputs, context)
 				provider.execute(node, evaluated_inputs)
 				return
 
@@ -143,10 +147,12 @@ func get_behavior(behavior_id: String) -> Variant:
 			return provider
 	return null
 
-func apply_behavior(behavior_id: String, node: Node, inputs: Dictionary = {}) -> void:
+func apply_behavior(behavior_id: String, node: Node, inputs: Dictionary = {}, scene_root: Node = null) -> void:
 	var behavior: Variant = get_behavior(behavior_id)
 	if behavior and behavior.has_method("apply"):
-		var evaluated_inputs: Dictionary = FKExpressionEvaluator.evaluate_inputs(inputs, node)
+		# Use scene_root as context if provided, otherwise use the node
+		var context = scene_root if scene_root else node
+		var evaluated_inputs: Dictionary = FKExpressionEvaluator.evaluate_inputs(inputs, context)
 		behavior.apply(node, evaluated_inputs)
 
 func remove_behavior(behavior_id: String, node: Node) -> void:

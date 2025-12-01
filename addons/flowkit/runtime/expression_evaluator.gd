@@ -1,18 +1,22 @@
 extends RefCounted
 class_name FKExpressionEvaluator
 
-## FlowKit Expression Evaluator
-## Evaluates string expressions at runtime into actual values
-## Supports:
-## - String literals: "Hello World!"
-## - Numbers: 42, 3.14
-## - Math expressions: 1+1, 5*3, 10/2
-## - Boolean values: true, false
-## - Variable access: $variable_name
-## - Node properties: node.position.x
+## FlowKit Expression Evaluator - Clickteam Fusion style
+## Literal values are parsed as their native types:
+##   "Hello" → String
+##   1 → Int
+##   1.0 → Float
+##   true/false → Boolean
+##   null → Null
+##   Vector2(0,0) → Vector2
+## 
+## Expressions are evaluated as GDScript:
+##   node.velocity.x + 10
+##   velocity.x > 0
+##   position * 2
 
 ## Evaluates a string expression and returns the result
-## Returns the evaluated value or the original string if evaluation fails
+## Tries to parse as literal first, then as GDScript expression
 static func evaluate(expr_str: String, context_node: Node = null) -> Variant:
 	if expr_str.is_empty():
 		return ""
@@ -20,90 +24,115 @@ static func evaluate(expr_str: String, context_node: Node = null) -> Variant:
 	# Trim whitespace
 	expr_str = expr_str.strip_edges()
 	
-	# Check for string literals (enclosed in quotes)
-	if _is_string_literal(expr_str):
-		return _parse_string_literal(expr_str)
+	# Try to parse as a literal value first
+	var literal_result = _try_parse_literal(expr_str)
+	if literal_result != null:
+		return literal_result
 	
-	# Check for boolean literals
-	if expr_str.to_lower() == "true":
-		return true
-	if expr_str.to_lower() == "false":
-		return false
-	
-	# Check for null
-	if expr_str.to_lower() == "null":
-		return null
-	
-	# Try to parse as a number
-	if _is_numeric(expr_str):
-		if "." in expr_str or "e" in expr_str.to_lower():
-			return float(expr_str)
-		else:
-			return int(expr_str)
-	
-	# Try to evaluate as a GDScript expression
-	var result: Variant = _evaluate_expression(expr_str, context_node)
-	if result != null:
-		return result
+	# If not a literal, try to evaluate as a GDScript expression
+	var expr_result = _evaluate_expression(expr_str, context_node)
+	if expr_result != null:
+		return expr_result
 	
 	# If all else fails, return as string
 	return expr_str
 
 
-## Check if the string is a quoted string literal
-static func _is_string_literal(expr: String) -> bool:
+## Try to parse the string as a literal value (not an expression)
+## Returns the parsed value, or null if it's not a literal
+static func _try_parse_literal(expr: String) -> Variant:
+	# Boolean literals
+	if expr.to_lower() == "true":
+		return true
+	if expr.to_lower() == "false":
+		return false
+	
+	# Null literal
+	if expr.to_lower() == "null":
+		return null
+	
+	# String literals (quoted)
+	if _is_quoted_string(expr):
+		return _parse_quoted_string(expr)
+	
+	# Numeric literals
+	if _is_numeric(expr):
+		if "." in expr or "e" in expr.to_lower():
+			return float(expr)
+		else:
+			return int(expr)
+	
+	# Vector/Color literals (e.g., "Vector2(0,0)", "Color(1,0,0,1)")
+	if _is_constructor_literal(expr):
+		return _evaluate_expression(expr, null)
+	
+	# Not a literal
+	return null
+
+
+## Check if string is a quoted string literal
+static func _is_quoted_string(expr: String) -> bool:
 	if expr.length() < 2:
 		return false
 	
-	var starts_with_quote: bool = expr[0] == '"' or expr[0] == "'"
-	var ends_with_quote: bool = expr[expr.length() - 1] == '"' or expr[expr.length() - 1] == "'"
+	var first_char = expr[0]
+	if first_char != '"' and first_char != "'":
+		return false
 	
-	return starts_with_quote and ends_with_quote
+	# Find the closing quote (accounting for escapes)
+	var i = 1
+	while i < expr.length():
+		if expr[i] == first_char and (i == 0 or expr[i-1] != "\\"):
+			# Found closing quote - must be at end of string
+			return i == expr.length() - 1
+		i += 1
+	
+	return false
 
 
-## Parse a string literal, removing quotes and handling escape sequences
-static func _parse_string_literal(expr: String) -> String:
-	# Remove surrounding quotes
-	var content: String = expr.substr(1, expr.length() - 2)
+## Parse a quoted string, removing quotes and handling escape sequences
+static func _parse_quoted_string(expr: String) -> String:
+	var quote_char = expr[0]
+	var content = expr.substr(1, expr.length() - 2)
 	
 	# Handle escape sequences
 	content = content.replace("\\n", "\n")
 	content = content.replace("\\t", "\t")
-	content = content.replace("\\\"", "\"")
-	content = content.replace("\\'", "'")
+	content = content.replace("\\r", "\r")
+	content = content.replace("\\" + quote_char, quote_char)
 	content = content.replace("\\\\", "\\")
 	
 	return content
 
 
-## Check if a string represents a numeric value
+## Check if string is a numeric literal (int or float)
 static func _is_numeric(expr: String) -> bool:
 	if expr.is_empty():
 		return false
 	
-	# Handle negative numbers
-	var check_str: String = expr
-	if check_str[0] == "-":
+	var check_str = expr
+	if check_str[0] == "-" or check_str[0] == "+":
 		check_str = check_str.substr(1)
 	
-	# Simple validation: contains only digits, at most one decimal point, and optional 'e' for scientific notation
-	var has_decimal: bool = false
-	var has_e: bool = false
+	if check_str.is_empty():
+		return false
+	
+	var has_dot = false
+	var has_e = false
 	
 	for i in range(check_str.length()):
-		var c: String = check_str[i]
+		var c = check_str[i]
 		
 		if c == ".":
-			if has_decimal or has_e:
+			if has_dot or has_e:
 				return false
-			has_decimal = true
+			has_dot = true
 		elif c.to_lower() == "e":
 			if has_e or i == 0 or i == check_str.length() - 1:
 				return false
 			has_e = true
 		elif c == "-" or c == "+":
-			# Allow +/- only after 'e'
-			if i == 0 or check_str[i - 1].to_lower() != "e":
+			if i == 0 or check_str[i-1].to_lower() != "e":
 				return false
 		elif not c.is_valid_int():
 			return false
@@ -111,43 +140,54 @@ static func _is_numeric(expr: String) -> bool:
 	return true
 
 
-## Evaluate a GDScript expression using the Expression class
-static func _evaluate_expression(expr_str: String, context_node: Node) -> Variant:
-	var expression: Expression = Expression.new()
+## Check if string is a constructor literal like "Vector2(0,0)" or "Color(1,0,0)"
+static func _is_constructor_literal(expr: String) -> bool:
+	var constructors = ["Vector2", "Vector3", "Vector4", "Color", "Rect2", "Transform2D", "Plane", "Quaternion", "AABB", "Basis", "Transform3D"]
 	
-	# Prepare input variables
+	for constructor in constructors:
+		if expr.begins_with(constructor + "(") and expr.ends_with(")"):
+			return true
+	
+	return false
+
+
+## Evaluate a GDScript expression using Godot's Expression class
+static func _evaluate_expression(expr_str: String, context_node: Node) -> Variant:
+	var expression = Expression.new()
+	
+	# Build input variables for the expression
 	var input_names: Array = []
 	var input_values: Array = []
 	
-	# If we have a context node, make it available as 'node'
+	# Always provide 'node' if we have a context
 	if context_node:
 		input_names.append("node")
 		input_values.append(context_node)
-		
-		# Also try to get FlowKitSystem for variable access
-		if context_node.get_tree() and context_node.get_tree().root.has_node("/root/FlowKitSystem"):
-			var system: Node = context_node.get_tree().root.get_node_or_null("/root/FlowKitSystem")
-			if system:
-				input_names.append("system")
-				input_values.append(system)
-				
-				# Make all variables directly accessible in expressions
-				if "variables" in system and system.variables is Dictionary:
-					for var_name in system.variables.keys():
-						input_names.append(var_name)
-						input_values.append(system.variables[var_name])
+	
+	# Try to get FlowKitSystem for accessing global variables
+	if context_node:
+		var system = context_node.get_tree().root.get_node_or_null("/root/FlowKitSystem")
+		if system:
+			input_names.append("system")
+			input_values.append(system)
+			
+			# Also expose all system variables directly
+			if "variables" in system and system.variables is Dictionary:
+				for var_name in system.variables.keys():
+					input_names.append(var_name)
+					input_values.append(system.variables[var_name])
 	
 	# Parse the expression
-	var error: Error = expression.parse(expr_str, input_names)
-	if error != OK:
-		# Expression parsing failed
+	var parse_error = expression.parse(expr_str, input_names)
+	if parse_error != OK:
+		# Silently fail - not an expression
 		return null
 	
-	# Execute the expression (suppress error output to avoid console spam)
-	var result: Variant = expression.execute(input_values, context_node, false)
+	# Execute it
+	var result = expression.execute(input_values, context_node, false)
 	
 	if expression.has_execute_failed():
-		# Execution failed
+		# Silently fail - expression execution failed
 		return null
 	
 	return result
@@ -159,7 +199,7 @@ static func evaluate_inputs(inputs: Dictionary, context_node: Node = null) -> Di
 	var evaluated: Dictionary = {}
 	
 	for key in inputs.keys():
-		var value: Variant = inputs[key]
+		var value = inputs[key]
 		
 		# Only evaluate if the value is a string
 		if value is String:

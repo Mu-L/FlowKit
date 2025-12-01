@@ -18,3 +18,4 @@ mono_crash.*.json
 
 # Extra
 .vscode/
+addons/flowkit/**/gen_*.gd*

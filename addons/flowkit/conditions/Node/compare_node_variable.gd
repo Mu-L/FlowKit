@@ -11,28 +11,31 @@ func get_name() -> String:
 
 func get_inputs() -> Array[Dictionary]:
 	return [
-		{"name": "Property", "type": "String"},
-		{"name": "Comparison", "type": "String"},
-		{"name": "Value", "type": "Variant"}
+		{"name": "Property", "type": "String", "description": "The property expression to compare (e.g., 'velocity.x', 'position', 'node.global_position.y')."},
+		{"name": "Comparison", "type": "String", "description": "The comparison operator (==, !=, <, >, <=, >=)."},
+		{"name": "Value", "type": "Variant", "description": "The value to compare against. Can be a literal (1, 1.0, true, \"text\") or expression (node.speed, node.position.length())."}
 	]
 
 func get_supported_types() -> Array[String]:
 	return ["Node"]
 
 func check(node: Node, inputs: Dictionary) -> bool:
-	var property_path: String = str(inputs.get("Property", ""))
+	var property_expr: String = str(inputs.get("Property", ""))
 	var comparison: String = str(inputs.get("Comparison", "=="))
 	var compare_value: Variant = inputs.get("Value", null)
 	
-	if property_path.is_empty():
+	if property_expr.is_empty():
 		return false
 	
-	# Get the property value from the node using indexed access
-	# Supports nested properties like "velocity/x" or "position/y"
-	var current_value: Variant = get_property_value(node, property_path)
-	if current_value == null:
-		return false
+	# Get FKExpressionEvaluator and evaluate both sides
+	var evaluator = load("res://addons/flowkit/runtime/expression_evaluator.gd")
+	var current_value: Variant = evaluator.evaluate(property_expr, node)
 	
+	# Also evaluate the comparison value if it's a string (could be a literal or expression)
+	if compare_value is String:
+		compare_value = evaluator.evaluate(compare_value, node)
+	
+	# Perform the comparison
 	match comparison:
 		"==": return current_value == compare_value
 		"!=": return current_value != compare_value
@@ -41,59 +44,3 @@ func check(node: Node, inputs: Dictionary) -> bool:
 		"<=": return current_value <= compare_value
 		">=": return current_value >= compare_value
 		_: return current_value == compare_value
-
-func get_property_value(obj: Variant, path: String) -> Variant:
-	if path.is_empty():
-		return null
-
-	# Split by dots OR slashes
-	var parts = path.split("/", false)
-	if parts.size() == 1:
-		parts = path.split(".", false)
-
-	# First: Godot-level property access
-	var base = parts[0]
-	var value = obj.get_indexed(base)
-	if value == null:
-		return null
-
-	# If only one property, return it
-	if parts.size() == 1:
-		return value
-
-	# Remaining parts = struct fields or dictionary entries
-	for i in range(1, parts.size()):
-		var key = parts[i]
-
-		# Vector2, Vector3, Rect2, etc. → field access
-		if typeof(value) == TYPE_VECTOR2:
-			if key == "x": value = value.x
-			elif key == "y": value = value.y
-			else: return null
-
-		elif typeof(value) == TYPE_VECTOR3:
-			if key in ["x","y","z"]:
-				value = value[key]
-			else:
-				return null
-
-		# Dictionaries
-		elif typeof(value) == TYPE_DICTIONARY:
-			if value.has(key):
-				value = value[key]
-			else:
-				return null
-
-		# Arrays
-		elif typeof(value) == TYPE_ARRAY:
-			var idx = int(key)
-			if idx >= 0 and idx < value.size():
-				value = value[idx]
-			else:
-				return null
-
-		# For other types, no deeper traversal
-		else:
-			return null
-
-	return value
