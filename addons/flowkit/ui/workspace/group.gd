@@ -25,6 +25,11 @@ var is_selected: bool = false  ## Selection state
 var registry: Node  ## Reference to the provider registry
 var current_drop_index: int = -1  ## Current calculated drop position
 
+# === Drag State ===
+var _drag_start_pos: Vector2 = Vector2.ZERO  ## Mouse position when drag started
+var _is_potential_drag: bool = false  ## Whether we're tracking a potential drag
+const DRAG_THRESHOLD: float = 8.0  ## Minimum pixels to move before starting drag
+
 # === Styles ===
 var normal_stylebox: StyleBox
 var selected_stylebox: StyleBox
@@ -32,7 +37,7 @@ var selected_stylebox: StyleBox
 # === Node References ===
 @onready var panel: PanelContainer = $Panel
 @onready var header: HBoxContainer = $Panel/VBox/Header
-@onready var collapse_btn: Button = $Panel/VBox/Header/CollapseButton
+@onready var collapse_btn: Label = $Panel/VBox/Header/CollapseButton
 @onready var title_label: Label = $Panel/VBox/Header/TitleLabel
 @onready var title_edit: LineEdit = $Panel/VBox/Header/TitleEdit
 @onready var children_container: VBoxContainer = $Panel/VBox/ChildrenMargin/ChildrenContainer
@@ -44,6 +49,16 @@ var selected_stylebox: StyleBox
 func _ready() -> void:
 	_setup_styles()
 	_setup_signals()
+
+
+func _input(event: InputEvent) -> void:
+	"""Handle global input to cancel title edit when clicking outside."""
+	if title_edit and title_edit.visible:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			# Check if click is outside the title_edit
+			var global_rect = title_edit.get_global_rect()
+			if not global_rect.has_point(event.global_position):
+				_finish_title_edit(title_edit.text)
 
 
 func _notification(what: int) -> void:
@@ -68,8 +83,9 @@ func _setup_styles() -> void:
 
 func _setup_signals() -> void:
 	"""Connect UI signals."""
+	# Connect collapse button (Label) click
 	if collapse_btn:
-		collapse_btn.pressed.connect(_on_collapse_pressed)
+		collapse_btn.gui_input.connect(_on_collapse_btn_input)
 	if title_label:
 		title_label.gui_input.connect(_on_title_input)
 	if title_edit:
@@ -80,6 +96,30 @@ func _setup_signals() -> void:
 	if header:
 		header.gui_input.connect(_on_header_gui_input)
 	gui_input.connect(_on_gui_input)
+
+
+func _on_collapse_btn_input(event: InputEvent) -> void:
+	"""Handle collapse button (triangle) input - collapse on release, drag on press+move."""
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			# Select the group and start tracking for potential drag
+			selected.emit(self)
+			_drag_start_pos = event.position
+			_is_potential_drag = true
+		else:
+			# Release - toggle collapse if we didn't drag
+			if _is_potential_drag:
+				_on_collapse_pressed()
+			_is_potential_drag = false
+	elif event is InputEventMouseMotion and _is_potential_drag:
+		# Check if moved enough to start drag
+		var distance = event.position.distance_to(_drag_start_pos)
+		if distance >= DRAG_THRESHOLD and not get_viewport().gui_is_dragging():
+			_is_potential_drag = false
+			var preview := Label.new()
+			preview.text = "📁 " + (group_data.title if group_data else "Group")
+			preview.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0, 0.9))
+			force_drag({"node": self, "type": "group"}, preview)
 
 # === Data Management ===
 
@@ -355,25 +395,47 @@ func _on_collapse_pressed() -> void:
 # === Title Editing ===
 
 func _on_title_input(event: InputEvent) -> void:
-	"""Handle title label input (click to collapse, double-click to edit)."""
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			var click_pos = event.position
-			var text_width = title_label.get_theme_font("font").get_string_size(
-				title_label.text,
-				HORIZONTAL_ALIGNMENT_LEFT,
-				-1,
-				title_label.get_theme_font_size("font_size")
-			).x
-			
+	"""Handle title label input - collapse on release, drag on press+move, edit on double-click."""
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var click_pos = event.position
+		var text_width = title_label.get_theme_font("font").get_string_size(
+			title_label.text,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			title_label.get_theme_font_size("font_size")
+		).x
+		
+		if event.pressed:
+			# Select the group
+			selected.emit(self)
 			if event.double_click and click_pos.x <= text_width + 10:
 				_start_title_edit()
+				_is_potential_drag = false
 			else:
+				# Start tracking for potential drag
+				_drag_start_pos = event.position
+				_is_potential_drag = true
+		else:
+			# Release - toggle collapse if we didn't drag
+			if _is_potential_drag:
 				_on_collapse_pressed()
+			_is_potential_drag = false
+	elif event is InputEventMouseMotion and _is_potential_drag:
+		# Check if moved enough to start drag
+		var distance = event.position.distance_to(_drag_start_pos)
+		if distance >= DRAG_THRESHOLD and not get_viewport().gui_is_dragging():
+			_is_potential_drag = false
+			var preview := Label.new()
+			preview.text = "📁 " + (group_data.title if group_data else "Group")
+			preview.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0, 0.9))
+			force_drag({"node": self, "type": "group"}, preview)
 
 
 func _start_title_edit() -> void:
 	"""Enter title edit mode."""
+	# Cancel any potential drag
+	_is_potential_drag = false
+	
 	if title_label and title_edit:
 		title_label.visible = false
 		title_edit.visible = true
@@ -408,7 +470,15 @@ func _finish_title_edit(new_text: String) -> void:
 
 func _on_gui_input(event: InputEvent) -> void:
 	"""Handle general input events."""
+	# Don't handle if click is on children area
 	if event is InputEventMouseButton and event.pressed:
+		var children_margin = get_node_or_null("Panel/VBox/ChildrenMargin")
+		if children_margin and children_margin.visible:
+			var local_pos = children_margin.get_local_mouse_position()
+			if children_margin.get_rect().has_point(local_pos + children_margin.position):
+				# Click is in children area, let children handle it
+				return
+		
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			selected.emit(self)
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
@@ -418,16 +488,29 @@ func _on_gui_input(event: InputEvent) -> void:
 
 func _on_header_gui_input(event: InputEvent) -> void:
 	"""Handle header input (selection and drag initiation)."""
+	# Don't process drag when in edit mode
+	if title_edit and title_edit.visible:
+		_is_potential_drag = false
+		return
+	
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
+				# Start tracking potential drag
+				_drag_start_pos = event.position
+				_is_potential_drag = true
 				selected.emit(self)
+			else:
+				# Mouse released - reset drag tracking
+				_is_potential_drag = false
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			selected.emit(self)
 			_show_context_menu(event.global_position)
-	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		# Start drag only if no drag in progress
-		if not get_viewport().gui_is_dragging():
+	elif event is InputEventMouseMotion and _is_potential_drag:
+		# Check if we've moved enough to start a drag
+		var distance = event.position.distance_to(_drag_start_pos)
+		if distance >= DRAG_THRESHOLD and not get_viewport().gui_is_dragging():
+			_is_potential_drag = false
 			var preview := Label.new()
 			preview.text = "📁 " + (group_data.title if group_data else "Group")
 			preview.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0, 0.9))

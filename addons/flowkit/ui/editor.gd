@@ -875,14 +875,25 @@ func _connect_group_signals(group) -> void:
 	group.data_changed.connect(_save_sheet)
 	group.before_data_changed.connect(_push_undo_state)
 
-func _on_group_selected(group_node) -> void:
-	"""Handle group block selection."""
+func _on_group_selected(node) -> void:
+	"""Handle selection from group (could be the group itself or a child)."""
+	# Check if it's an event_row inside the group
+	if node.has_method("get_event_data"):
+		_on_row_selected(node)
+		return
+	
+	# Check if it's a comment inside the group
+	if node.has_method("get_comment_data") and not node.has_method("get_group_data"):
+		_on_comment_selected(node)
+		return
+	
+	# It's a group (or nested group)
 	_deselect_item()
 	
 	if selected_row and is_instance_valid(selected_row) and selected_row.has_method("set_selected"):
 		selected_row.set_selected(false)
 	
-	selected_row = group_node
+	selected_row = node
 	if selected_row and selected_row.has_method("set_selected"):
 		selected_row.set_selected(true)
 
