@@ -212,6 +212,7 @@ func _capture_sheet_state() -> Array:
 func _serialize_event_block(data: FKEventBlock) -> Dictionary:
 	"""Serialize an event block to a dictionary."""
 	var result = {
+		"block_id": data.block_id,
 		"event_id": data.event_id,
 		"target_node": str(data.target_node),
 		"inputs": data.inputs.duplicate(),
@@ -306,9 +307,10 @@ func _restore_sheet_state(state: Array) -> void:
 
 func _deserialize_event_block(dict: Dictionary) -> FKEventBlock:
 	"""Deserialize a dictionary to an event block."""
-	var data = FKEventBlock.new()
-	data.event_id = dict.get("event_id", "")
-	data.target_node = NodePath(dict.get("target_node", ""))
+	var block_id = dict.get("block_id", "")
+	if block_id == "":
+		block_id = _generate_unique_block_id(dict.get("event_id", ""))
+	var data = FKEventBlock.new(block_id, dict.get("event_id", ""), NodePath(dict.get("target_node", "")))
 	data.inputs = dict.get("inputs", {}).duplicate()
 	data.conditions = [] as Array[FKEventCondition]
 	data.actions = [] as Array[FKEventAction]
@@ -493,9 +495,9 @@ func _paste_events_from_clipboard() -> void:
 	# Create and insert event rows
 	var first_new_row = null
 	for event_data_dict in clipboard_events:
-		var data = FKEventBlock.new()
-		data.event_id = event_data_dict["event_id"]
-		data.target_node = event_data_dict["target_node"]
+		# Generate new block_id for pasted events (they're duplicates)
+		var new_block_id = _generate_unique_block_id(event_data_dict["event_id"])
+		var data = FKEventBlock.new(new_block_id, event_data_dict["event_id"], event_data_dict["target_node"])
 		data.inputs = event_data_dict["inputs"].duplicate()
 		data.conditions = [] as Array[FKEventCondition]
 		data.actions = [] as Array[FKEventAction]
@@ -755,13 +757,10 @@ func _generate_sheet_from_blocks() -> FKEventSheet:
 			var data = row.get_event_data()
 			if data:
 				# Create a clean copy of the event with its conditions and actions
-				var event_copy = FKEventBlock.new()
-				event_copy.event_id = data.event_id
-				event_copy.target_node = data.target_node
+				var event_copy = FKEventBlock.new(data.block_id, data.event_id, data.target_node)
 				event_copy.inputs = data.inputs.duplicate()
 				event_copy.conditions = [] as Array[FKEventCondition]
 				event_copy.actions = [] as Array[FKEventAction]
-				
 				# Copy conditions
 				for cond in data.conditions:
 					var cond_copy = FKEventCondition.new()
@@ -801,9 +800,7 @@ func _create_event_row(data: FKEventBlock) -> Control:
 	"""Create event row node from data (GDevelop-style)."""
 	var row = EVENT_ROW_SCENE.instantiate()
 	
-	var copy = FKEventBlock.new()
-	copy.event_id = data.event_id
-	copy.target_node = data.target_node
+	var copy = FKEventBlock.new(data.block_id, data.event_id, data.target_node)
 	copy.inputs = data.inputs.duplicate()
 	copy.conditions = [] as Array[FKEventCondition]
 	copy.actions = [] as Array[FKEventAction]
@@ -1105,9 +1102,8 @@ func _finalize_event_creation(inputs: Dictionary) -> void:
 	# Push undo state before adding event
 	_push_undo_state()
 	
-	var data = FKEventBlock.new()
-	data.event_id = pending_id
-	data.target_node = pending_node_path
+	var block_id = _generate_unique_block_id(pending_id)
+	var data = FKEventBlock.new(block_id, pending_id, pending_node_path)
 	data.inputs = inputs
 	data.conditions = [] as Array[FKEventCondition]
 	data.actions = [] as Array[FKEventAction]
@@ -1213,10 +1209,8 @@ func _replace_event(expressions: Dictionary) -> void:
 	var old_data = pending_target_row.get_event_data()
 	var old_index = pending_target_row.get_index()
 	
-	# Create new event data
-	var new_data = FKEventBlock.new()
-	new_data.event_id = pending_id
-	new_data.target_node = pending_node_path
+	# Create new event data (preserve block_id from old event)
+	var new_data = FKEventBlock.new(old_data.block_id if old_data else _generate_unique_block_id(pending_id), pending_id, pending_node_path)
 	new_data.inputs = expressions
 	new_data.conditions = old_data.conditions if old_data else ([] as Array[FKEventCondition])
 	new_data.actions = old_data.actions if old_data else ([] as Array[FKEventAction])
@@ -1429,3 +1423,7 @@ func _on_action_dropped(source_row, action_data: FKEventAction, target_row) -> v
 		target_row.update_display()
 	
 	_save_sheet()
+
+func _generate_unique_block_id(event_id: String) -> String:
+	"""Generate a unique ID for an event block."""
+	return "%s_%d_%d" % [event_id, Time.get_ticks_msec(), randi()]

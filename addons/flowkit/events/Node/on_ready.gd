@@ -15,13 +15,12 @@ func get_supported_types() -> Array[String]:
 func get_inputs() -> Array:
 	return []
 
-# Track the frame when on_ready fired for the current scene
-var _ready_frame: int = -1
+# Track which block IDs have already fired for on_ready
+var _fired_blocks: Dictionary = {}  # block_id -> true
 var _last_scene_path: String = ""
-var _has_fired: bool = false
 
 
-func poll(node: Node, inputs: Dictionary = {}) -> bool:
+func poll(node: Node, inputs: Dictionary = {}, block_id: String = "") -> bool:
 	if not node:
 		return false
 	
@@ -31,24 +30,14 @@ func poll(node: Node, inputs: Dictionary = {}) -> bool:
 		var scene_path = current_scene.scene_file_path
 		if scene_path != _last_scene_path:
 			_last_scene_path = scene_path
-			_ready_frame = -1
-			_has_fired = false
+			_fired_blocks.clear()
 	
-	if _has_fired:
+	# If this specific block has already fired, don't fire again
+	if block_id and _fired_blocks.has(block_id):
 		return false
 	
-	var current_frame = Engine.get_process_frames()
+	# Fire this block (first time we see it in this scene)
+	if block_id:
+		_fired_blocks[block_id] = true
 	
-	# If this is the first poll for this scene, record the frame and fire
-	if _ready_frame == -1:
-		_ready_frame = current_frame
-		_has_fired = true
-		return true
-	
-	# If still on the same frame, allow firing
-	if current_frame == _ready_frame:
-		_has_fired = true
-		return true
-	
-	# Otherwise, already fired
-	return false
+	return true

@@ -16,5 +16,5 @@ func get_supported_types() -> Array[String]:
 func get_inputs() -> Array:
 	return []
 
-func poll(node: Node, inputs: Dictionary = {}) -> bool:
+func poll(node: Node, inputs: Dictionary = {}, block_id: String = "") -> bool:
 	return false

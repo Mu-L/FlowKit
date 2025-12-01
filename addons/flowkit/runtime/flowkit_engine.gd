@@ -95,6 +95,10 @@ func _load_sheets_for_scene(scene_root: Node) -> void:
 		if ResourceLoader.exists(sheet_path):
 			var sheet: FKEventSheet = load(sheet_path)
 			if sheet:
+				# Ensure all blocks have unique IDs (for backward compatibility with old saved sheets)
+				for block in sheet.events:
+					if block:
+						block.ensure_block_id()
 				active_sheets.append({"sheet": sheet, "root": node_root, "scene_name": scene_name, "uid": uid})
 				print("[FlowKit] Loaded event sheet for scene: ", scene_name, " (node: ", node_root.name, ") with ", sheet.events.size(), " events")
 			else:
@@ -146,7 +150,7 @@ func _run_sheet(entry: Dictionary) -> void:
 			if not cnode:
 				continue
 
-		var cond_result: bool = registry.check_condition(standalone_cond.condition_id, cnode, standalone_cond.inputs, standalone_cond.negated)
+		var cond_result: bool = registry.check_condition(standalone_cond.condition_id, cnode, standalone_cond.inputs, standalone_cond.negated, current_root)
 		if cond_result:
 			# Execute actions associated with this standalone condition
 			for act in standalone_cond.actions:
@@ -158,7 +162,7 @@ func _run_sheet(entry: Dictionary) -> void:
 					if not anode:
 						print("[FlowKit] Standalone condition action target node not found: ", act.target_node)
 						continue
-				registry.execute_action(act.action_id, anode, act.inputs)
+				registry.execute_action(act.action_id, anode, act.inputs, current_root)
 
 	# Process each block individually
 	for block in sheet.events:
@@ -173,7 +177,7 @@ func _run_sheet(entry: Dictionary) -> void:
 				continue
 
 		# Poll the event with the block's inputs
-		var event_triggered = registry.poll_event(block.event_id, node, block.inputs)
+		var event_triggered = registry.poll_event(block.event_id, node, block.inputs, block.block_id)
 		if not event_triggered:
 			continue
 
@@ -189,7 +193,7 @@ func _run_sheet(entry: Dictionary) -> void:
 					passed = false
 					break
 
-			var cond_result: bool = registry.check_condition(cond.condition_id, cnode, cond.inputs, cond.negated)
+			var cond_result: bool = registry.check_condition(cond.condition_id, cnode, cond.inputs, cond.negated, current_root)
 			if not cond_result:
 				passed = false
 				break
@@ -207,9 +211,7 @@ func _run_sheet(entry: Dictionary) -> void:
 				if not anode:
 					print("[FlowKit] Action target node not found: ", act.target_node)
 					continue
-			registry.execute_action(act.action_id, anode, act.inputs)
-
-
+			registry.execute_action(act.action_id, anode, act.inputs, current_root)
 # --- Behavior processing ---------------------------------------------------
 func _scan_and_activate_behaviors(scene_root: Node) -> void:
 	# Recursively scan all nodes in the scene for behaviors
@@ -224,7 +226,8 @@ func _scan_node_for_behavior(node: Node) -> void:
 		
 		if not behavior_id.is_empty():
 			# Apply the behavior
-			registry.apply_behavior(behavior_id, node, inputs)
+			var scene_root = get_tree().current_scene
+			registry.apply_behavior(behavior_id, node, inputs, scene_root)
 			
 			# Track this node for behavior processing
 			if not active_behavior_nodes.has(node):

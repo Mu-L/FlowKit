@@ -17,7 +17,7 @@ func get_inputs() -> Array:
 
 var _emitted: Dictionary = {}  # node -> bool
 
-func poll(node: Node, inputs: Dictionary = {}) -> bool:
+func poll(node: Node, inputs: Dictionary = {}, block_id: String = "") -> bool:
 	if not node or not node.is_inside_tree() or not (node is AudioStreamPlayer or node is AudioStreamPlayer2D or node is AudioStreamPlayer3D):
 		return false
 	

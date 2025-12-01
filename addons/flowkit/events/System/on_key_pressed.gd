@@ -17,7 +17,7 @@ func get_inputs() -> Array:
 		{"name": "key", "type": "string", "description": "The name of the key (defined in InputMap) or raw key name to monitor. If left empty, any key press will trigger the event."}
 	]
 
-func poll(node: Node, inputs: Dictionary = {}) -> bool:
+func poll(node: Node, inputs: Dictionary = {}, block_id: String = "") -> bool:
 	if not node or not node.is_inside_tree():
 		return false
 	
