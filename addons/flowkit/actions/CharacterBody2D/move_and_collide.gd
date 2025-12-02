@@ -18,6 +18,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["CharacterBody2D"]
 
+func get_category() -> String:
+	return "Movement"
+
 func execute(node: Node, inputs: Dictionary) -> void:
 	if not node is CharacterBody2D:
 		return

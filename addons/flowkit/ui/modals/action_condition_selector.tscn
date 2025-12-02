@@ -1,0 +1,171 @@
+[gd_scene load_steps=3 format=3 uid="uid://dg8k2xvnp5qwm"]
+
+[ext_resource type="Script" path="res://addons/flowkit/ui/modals/action_condition_selector.gd" id="1_selector"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_params"]
+bg_color = Color(0.14, 0.14, 0.17, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="ActionConditionSelector" type="PopupPanel"]
+title = "Select an Action"
+initial_position = 2
+size = Vector2i(1100, 650)
+borderless = false
+keep_title_visible = true
+unresizable = false
+script = ExtResource("1_selector")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="SearchBox" type="LineEdit" parent="VBoxContainer"]
+layout_mode = 2
+placeholder_text = "Search objects or actions..."
+clear_button_enabled = true
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = -500
+
+[node name="ObjectsPanel" type="Panel" parent="VBoxContainer/HSplitContainer"]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+
+[node name="TabContainer" type="TabContainer" parent="VBoxContainer/HSplitContainer/ObjectsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Objects" type="Tree" parent="VBoxContainer/HSplitContainer/ObjectsPanel/TabContainer"]
+layout_mode = 2
+hide_root = false
+
+[node name="Other actions" type="Tree" parent="VBoxContainer/HSplitContainer/ObjectsPanel/TabContainer"]
+visible = false
+layout_mode = 2
+hide_root = true
+
+[node name="HSplitContainer2" type="HSplitContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+split_offset = -150
+
+[node name="ActionsPanel" type="Panel" parent="VBoxContainer/HSplitContainer/HSplitContainer2"]
+custom_minimum_size = Vector2(350, 0)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ActionsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="ActionsLabel" type="Label" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ActionsPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Available Actions"
+
+[node name="ActionsTree" type="Tree" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ActionsPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+hide_root = true
+
+[node name="ParametersPanel" type="Panel" parent="VBoxContainer/HSplitContainer/HSplitContainer2"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_params")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="ParamsHeader" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="ParamsLabel" type="Label" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer/ParamsHeader"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Parameters"
+
+[node name="Spacer" type="Control" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer/ParamsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ExpressionHint" type="Label" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer/ParamsHeader"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+text = "Click Σ for expressions"
+
+[node name="DescriptionLabel" type="Label" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer"]
+layout_mode = 2
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="ParametersScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ParametersContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HSplitContainer2/ParametersPanel/VBoxContainer/ParametersScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ButtonsContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="Spacer" type="Control" parent="VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CancelButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(90, 32)
+layout_mode = 2
+text = "Cancel"
+
+[node name="OKButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(90, 32)
+layout_mode = 2
+text = "OK"

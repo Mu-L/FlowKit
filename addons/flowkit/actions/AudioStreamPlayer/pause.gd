@@ -15,6 +15,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["AudioStreamPlayer", "AudioStreamPlayer2D", "AudioStreamPlayer3D"]
 
+func get_category() -> String:
+	return "Audio"
+
 func execute(node: Node, inputs: Dictionary) -> void:
 	if node and (node is AudioStreamPlayer or node is AudioStreamPlayer2D or node is AudioStreamPlayer3D):
 		node.stream_paused = true

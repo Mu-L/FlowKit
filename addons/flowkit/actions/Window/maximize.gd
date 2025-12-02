@@ -15,6 +15,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["Window"]
 
+func get_category() -> String:
+	return "Window"
+
 func execute(node: Node, inputs: Dictionary) -> void:
 	if node and node is Window:
 		node.mode = Window.MODE_MAXIMIZED

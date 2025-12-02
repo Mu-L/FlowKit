@@ -1,13 +1,11 @@
-[gd_scene load_steps=11 format=3 uid="uid://d1uy22pv42td3"]
+[gd_scene load_steps=7 format=3 uid="uid://d1uy22pv42td3"]
 
 [ext_resource type="Script" uid="uid://bwh2bhg4rvhcx" path="res://addons/flowkit/ui/editor.gd" id="1_clean"]
 [ext_resource type="Script" uid="uid://d3kkt2ew5wf7j" path="res://addons/flowkit/ui/blocks_container.gd" id="2_blocks"]
 [ext_resource type="Script" uid="uid://dg46wtoo70ju2" path="res://addons/flowkit/ui/menu_bar.gd" id="2_tc3av"]
 [ext_resource type="PackedScene" uid="uid://buxqkjavs51qe" path="res://addons/flowkit/ui/modals/select.tscn" id="8_select"]
 [ext_resource type="PackedScene" uid="uid://crj5y8vh2m3qi" path="res://addons/flowkit/ui/modals/select_event.tscn" id="9_select_event"]
-[ext_resource type="PackedScene" uid="uid://c7j20avh3m4rj" path="res://addons/flowkit/ui/modals/select_action.tscn" id="10_select_action"]
-[ext_resource type="PackedScene" uid="uid://d58fx0alhbxs" path="res://addons/flowkit/ui/modals/expression_editor.tscn" id="11_expression_editor"]
-[ext_resource type="PackedScene" uid="uid://cam4a1xj6n7ql" path="res://addons/flowkit/ui/modals/select_condition.tscn" id="12_select_condition"]
+[ext_resource type="PackedScene" uid="uid://dg8k2xvnp5qwm" path="res://addons/flowkit/ui/modals/action_condition_selector.tscn" id="13_gdevelop_selector"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.12, 0.12, 0.15, 1)
@@ -164,11 +162,7 @@ text = "➕ Add Event"
 
 [node name="SelectEventModal" parent="." instance=ExtResource("9_select_event")]
 
-[node name="SelectActionModal" parent="." instance=ExtResource("10_select_action")]
-
-[node name="SelectConditionModal" parent="." instance=ExtResource("12_select_condition")]
-
-[node name="ExpressionModal" parent="." instance=ExtResource("11_expression_editor")]
+[node name="ActionConditionSelector" parent="." instance=ExtResource("13_gdevelop_selector")]
 
 [connection signal="generate_manifest" from="OuterVBox/TopMargin/TopBar/MenuBar" to="." method="_on_generate_manifest"]
 [connection signal="generate_providers" from="OuterVBox/TopMargin/TopBar/MenuBar" to="." method="_on_generate_providers"]
@@ -183,6 +177,4 @@ text = "➕ Add Event"
 [connection signal="pressed" from="OuterVBox/BottomMargin/ButtonContainer/AddEventButton" to="." method="_on_add_event_button_pressed"]
 [connection signal="node_selected" from="SelectNodeModal" to="." method="_on_node_selected"]
 [connection signal="event_selected" from="SelectEventModal" to="." method="_on_event_selected"]
-[connection signal="action_selected" from="SelectActionModal" to="." method="_on_action_selected"]
-[connection signal="condition_selected" from="SelectConditionModal" to="." method="_on_condition_selected"]
-[connection signal="expressions_confirmed" from="ExpressionModal" to="." method="_on_expressions_confirmed"]
+[connection signal="item_selected" from="ActionConditionSelector" to="." method="_on_action_condition_selected"]

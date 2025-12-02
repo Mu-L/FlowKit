@@ -16,5 +16,8 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
     return []
 
+func get_category() -> String:
+    return "General"
+
 func check(node: Node, inputs: Dictionary) -> bool:
     return false

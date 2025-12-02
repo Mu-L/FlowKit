@@ -12,6 +12,9 @@ func get_name() -> String:
 func get_supported_types() -> Array[String]:
 	return ["System"]
 
+func get_category() -> String:
+	return "System"
+
 func get_inputs() -> Array[Dictionary]:
 	return []
 

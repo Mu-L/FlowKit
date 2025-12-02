@@ -100,19 +100,29 @@ func _update_label() -> void:
 	
 	if label and condition_data:
 		var display_name = condition_data.condition_id
+		var input_definitions: Array = []
 		
 		if registry:
 			for provider in registry.condition_providers:
 				if provider.has_method("get_id") and provider.get_id() == condition_data.condition_id:
 					if provider.has_method("get_name"):
 						display_name = provider.get_name()
+					if provider.has_method("get_inputs"):
+						input_definitions = provider.get_inputs()
 					break
 		
 		var params_text = ""
 		if not condition_data.inputs.is_empty():
 			var param_pairs = []
-			for key in condition_data.inputs:
-				param_pairs.append(str(condition_data.inputs[key]))
+			# Use input definitions order if available, otherwise fallback to dictionary order
+			if not input_definitions.is_empty():
+				for input_def in input_definitions:
+					var key = input_def.get("name", "")
+					if condition_data.inputs.has(key):
+						param_pairs.append(str(condition_data.inputs[key]))
+			else:
+				for key in condition_data.inputs:
+					param_pairs.append(str(condition_data.inputs[key]))
 			params_text = ": " + ", ".join(param_pairs)
 		
 		var negation_prefix = "NOT " if condition_data.negated else ""

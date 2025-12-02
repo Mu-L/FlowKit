@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="FKEventSheet" load_steps=8 format=3 uid="uid://c0g28rrxl6o34"]
+
+[ext_resource type="Script" uid="uid://b1y3c8rnt2rcg" path="res://addons/flowkit/resources/fk_comment.gd" id="1_7wdh7"]
+[ext_resource type="Script" uid="uid://bxdhylwvr4osy" path="res://addons/flowkit/resources/event_block.gd" id="2_au078"]
+[ext_resource type="Script" uid="uid://bwbi0utcwmxwf" path="res://addons/flowkit/resources/event_action.gd" id="3_567m5"]
+[ext_resource type="Script" uid="uid://bmaxurgrsv4ct" path="res://addons/flowkit/resources/event_condition.gd" id="4_1knjg"]
+[ext_resource type="Script" path="res://addons/flowkit/resources/fk_group.gd" id="5_44bpf"]
+[ext_resource type="Script" uid="uid://bumsyiqkp46l1" path="res://addons/flowkit/resources/event_sheet.gd" id="6_5l6ou"]
+
+[sub_resource type="Resource" id="Resource_7wdh7"]
+script = ExtResource("2_au078")
+block_id = "event_1764650938_555033540"
+event_id = "on_process"
+target_node = NodePath(".")
+
+[resource]
+script = ExtResource("6_5l6ou")
+events = Array[ExtResource("2_au078")]([SubResource("Resource_7wdh7")])
+item_order = Array[Dictionary]([{
+"index": 0,
+"type": "event"
+}])

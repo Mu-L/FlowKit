@@ -15,6 +15,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["VideoStreamPlayer"]
 
+func get_category() -> String:
+	return "Audio"
+
 func execute(node: Node, inputs: Dictionary) -> void:
 	if node and node is VideoStreamPlayer:
 		node.paused = true

@@ -6,7 +6,7 @@ var registry: Node
 var generator
 var current_scene_uid: int = 0
 
-# Scene preloads - GDevelop-style event rows
+# Scene preloads - event rows
 const EVENT_ROW_SCENE = preload("res://addons/flowkit/ui/workspace/event_row.tscn")
 const COMMENT_SCENE = preload("res://addons/flowkit/ui/workspace/comment.tscn")
 const GROUP_SCENE = preload("res://addons/flowkit/ui/workspace/group.tscn")
@@ -26,9 +26,11 @@ const DRAG_SPACER_HEIGHT := 50  # Height of temporary drop zone
 # Modals
 @onready var select_node_modal := $SelectNodeModal
 @onready var select_event_modal := $SelectEventModal
-@onready var select_condition_modal := $SelectConditionModal
-@onready var select_action_modal := $SelectActionModal
-@onready var expression_modal := $ExpressionModal
+@onready var action_condition_selector := $ActionConditionSelector
+
+# Legacy modals (optional - may not exist if using action/condition selector)
+var select_condition_modal = null
+var select_action_modal = null
 
 # Workflow state
 var pending_block_type: String = ""  # "event", "condition", "action", "event_replace", "event_in_group", etc.
@@ -78,11 +80,8 @@ func set_editor_interface(interface: EditorInterface) -> void:
 		select_condition_modal.set_editor_interface(interface)
 	if select_action_modal:
 		select_action_modal.set_editor_interface(interface)
-	if expression_modal:
-		expression_modal.set_editor_interface(interface)
-	else:
-		# If modal isn't ready yet, defer it
-		call_deferred("_set_expression_interface", interface)
+	if action_condition_selector:
+		action_condition_selector.editor_interface = interface
 
 func set_registry(reg: Node) -> void:
 	registry = reg
@@ -763,9 +762,6 @@ func _find_event_row_at_mouse() -> Control:
 		if row.get_global_rect().has_point(mouse_pos):
 			return row
 	return null
-func _set_expression_interface(interface: EditorInterface) -> void:
-	if expression_modal:
-		expression_modal.set_editor_interface(interface)
 
 func _process(delta: float) -> void:
 	# Handle drag spacers - add temporary space only when needed
@@ -900,7 +896,7 @@ func _load_scene_sheet() -> void:
 	_show_content_state()
 
 func _populate_from_sheet(sheet: FKEventSheet) -> void:
-	"""Create event rows and comments from event sheet data (GDevelop-style)."""
+	"""Create event rows and comments from event sheet data."""
 	# If we have item_order, use it to restore the correct order
 	if sheet.item_order.size() > 0:
 		for item in sheet.item_order:
@@ -947,7 +943,7 @@ func _save_and_reload_sheet() -> void:
 	_load_scene_sheet()
 
 func _generate_sheet_from_blocks() -> FKEventSheet:
-	"""Build event sheet from event rows, comments, and groups (GDevelop-style)."""
+	"""Build event sheet from event rows, comments, and groups."""
 	var sheet = FKEventSheet.new()
 	var events: Array[FKEventBlock] = []
 	var comments: Array[FKCommentBlock] = []
@@ -1045,7 +1041,7 @@ func _new_sheet() -> void:
 # === Event Row Creation ===
 
 func _create_event_row(data: FKEventBlock) -> Control:
-	"""Create event row node from data (GDevelop-style)."""
+	"""Create event row node from data."""
 	var row = EVENT_ROW_SCENE.instantiate()
 	
 	var copy = _copy_event_block(data)
@@ -1409,20 +1405,29 @@ func _on_node_selected(node_path: String, node_class: String) -> void:
 			select_event_modal.populate_events(node_path, node_class)
 			_popup_centered_on_editor(select_event_modal)
 		"condition", "condition_replace":
-			select_condition_modal.populate_conditions(node_path, node_class)
-			_popup_centered_on_editor(select_condition_modal)
+			_open_selector_for_condition()
 		"action", "action_replace":
-			select_action_modal.populate_actions(node_path, node_class)
-			_popup_centered_on_editor(select_action_modal)
+			_open_selector_for_action()
 
 func _on_event_selected(node_path: String, event_id: String, inputs: Array) -> void:
 	"""Event type selected."""
 	pending_id = event_id
+	pending_node_path = node_path
 	select_event_modal.hide()
 	
 	if inputs.size() > 0:
-		expression_modal.populate_inputs(node_path, event_id, inputs)
-		_popup_centered_on_editor(expression_modal)
+		var scene_root = editor_interface.get_edited_scene_root()
+		if scene_root and action_condition_selector:
+			action_condition_selector.open_for_event_parameters(node_path, event_id, inputs, {}, scene_root)
+			_popup_centered_on_editor(action_condition_selector)
+		else:
+			# Fallback if no scene root
+			if pending_block_type == "event_replace":
+				_replace_event({})
+			elif pending_block_type == "event_in_group":
+				_finalize_event_in_group({})
+			else:
+				_finalize_event_creation({})
 	else:
 		if pending_block_type == "event_replace":
 			_replace_event({})
@@ -1432,13 +1437,22 @@ func _on_event_selected(node_path: String, event_id: String, inputs: Array) -> v
 			_finalize_event_creation({})
 
 func _on_condition_selected(node_path: String, condition_id: String, inputs: Array) -> void:
-	"""Condition type selected."""
+	"""Condition type selected (legacy callback - kept for compatibility)."""
 	pending_id = condition_id
-	select_condition_modal.hide()
+	pending_node_path = node_path
 	
+	# This is a legacy callback - the new flow uses action_condition_selector directly
+	# But we keep it for compatibility with any remaining legacy code paths
 	if inputs.size() > 0:
-		expression_modal.populate_inputs(node_path, condition_id, inputs)
-		_popup_centered_on_editor(expression_modal)
+		var scene_root = editor_interface.get_edited_scene_root()
+		if scene_root and action_condition_selector:
+			action_condition_selector.open_for_event_parameters(node_path, condition_id, inputs, {}, scene_root)
+			_popup_centered_on_editor(action_condition_selector)
+		else:
+			if pending_block_type == "condition_replace":
+				_replace_condition({})
+			else:
+				_finalize_condition_creation({})
 	else:
 		if pending_block_type == "condition_replace":
 			_replace_condition({})
@@ -1446,47 +1460,33 @@ func _on_condition_selected(node_path: String, condition_id: String, inputs: Arr
 			_finalize_condition_creation({})
 
 func _on_action_selected(node_path: String, action_id: String, inputs: Array) -> void:
-	"""Action type selected."""
+	"""Action type selected (legacy callback - kept for compatibility)."""
 	pending_id = action_id
-	select_action_modal.hide()
+	pending_node_path = node_path
 	
+	# This is a legacy callback - the new flow uses action_condition_selector directly
+	# But we keep it for compatibility with any remaining legacy code paths
 	if inputs.size() > 0:
-		expression_modal.populate_inputs(node_path, action_id, inputs)
-		_popup_centered_on_editor(expression_modal)
+		var scene_root = editor_interface.get_edited_scene_root()
+		if scene_root and action_condition_selector:
+			action_condition_selector.open_for_event_parameters(node_path, action_id, inputs, {}, scene_root)
+			_popup_centered_on_editor(action_condition_selector)
+		else:
+			if pending_block_type == "action_replace":
+				_replace_action({})
+			else:
+				_finalize_action_creation({})
 	else:
 		if pending_block_type == "action_replace":
 			_replace_action({})
 		else:
 			_finalize_action_creation({})
 
-func _on_expressions_confirmed(_node_path: String, _id: String, expressions: Dictionary) -> void:
-	"""Expressions entered."""
-	expression_modal.hide()
-	
-	match pending_block_type:
-		"event":
-			_finalize_event_creation(expressions)
-		"event_in_group":
-			_finalize_event_in_group(expressions)
-		"condition":
-			_finalize_condition_creation(expressions)
-		"action":
-			_finalize_action_creation(expressions)
-		"event_edit":
-			_update_event_inputs(expressions)
-		"condition_edit":
-			_update_condition_inputs(expressions)
-		"action_edit":
-			_update_action_inputs(expressions)
-		"event_replace":
-			_replace_event(expressions)
-		"condition_replace":
-			_replace_condition(expressions)
-		"action_replace":
-			_replace_action(expressions)
+# Note: _on_expressions_confirmed is no longer used - all expression input now goes through
+# _on_action_condition_selected which handles all cases including events, conditions, and actions
 
 func _finalize_event_creation(inputs: Dictionary) -> void:
-	"""Create and add event row (GDevelop-style)."""
+	"""Create and add event row."""
 	# Push undo state before adding event
 	_push_undo_state()
 	
@@ -1641,11 +1641,11 @@ func _replace_event(expressions: Dictionary) -> void:
 	_save_sheet()
 
 func _replace_condition(expressions: Dictionary) -> void:
-	"""Replace condition is not used in GDevelop-style layout."""
+	"""Replace condition is not used in current layout."""
 	_reset_workflow()
 
 func _replace_action(expressions: Dictionary) -> void:
-	"""Replace action is not used in GDevelop-style layout."""
+	"""Replace action is not used in current layout."""
 	_reset_workflow()
 
 func _reset_workflow() -> void:
@@ -1707,25 +1707,195 @@ func _on_row_edit(signal_row, bound_row) -> void:
 				break
 	
 	if provider_inputs.size() > 0:
+		var scene_root = editor_interface.get_edited_scene_root()
+		if not scene_root:
+			print("[FlowKit] ERROR: No scene root available for editing event!")
+			return
+		
+		if not action_condition_selector:
+			print("[FlowKit] ERROR: action_condition_selector is null!")
+			return
+		
 		# Set up editing mode
 		pending_target_row = bound_row
 		pending_block_type = "event_edit"
 		pending_id = data.event_id
 		pending_node_path = str(data.target_node)
 		
-		# Open expression modal with current values
-		expression_modal.populate_inputs(str(data.target_node), data.event_id, provider_inputs, data.inputs)
-		_popup_centered_on_editor(expression_modal)
+		# Open selector for event parameters
+		action_condition_selector.open_for_event_parameters(
+			str(data.target_node),
+			data.event_id,
+			provider_inputs,
+			data.inputs,
+			scene_root
+		)
+		_popup_centered_on_editor(action_condition_selector)
 	else:
 		print("Event has no inputs to edit")
 
 func _on_row_add_condition(signal_row, bound_row) -> void:
+	print("[FlowKit] Add condition requested for row: ", bound_row)
 	pending_target_row = bound_row
-	_start_add_workflow("condition", bound_row)
+	pending_block_type = "condition"
+	_open_action_condition_selector(ActionConditionSelector.SelectorMode.CONDITION)
 
 func _on_row_add_action(signal_row, bound_row) -> void:
+	print("[FlowKit] Add action requested for row: ", bound_row)
 	pending_target_row = bound_row
-	_start_add_workflow("action", bound_row)
+	pending_block_type = "action"
+	_open_action_condition_selector(ActionConditionSelector.SelectorMode.ACTION)
+
+func _open_action_condition_selector(mode: ActionConditionSelector.SelectorMode) -> void:
+	"""Open the action/condition selector dialog."""
+	print("[FlowKit] Opening action/condition selector, mode: ", mode)
+	print("[FlowKit] action_condition_selector is: ", action_condition_selector)
+	
+	if not action_condition_selector:
+		print("[FlowKit] ERROR: action_condition_selector is null!")
+		return
+	
+	var scene_root = editor_interface.get_edited_scene_root()
+	print("[FlowKit] scene_root is: ", scene_root)
+	
+	if not scene_root:
+		print("[FlowKit] ERROR: No scene root available!")
+		return
+	
+	action_condition_selector.set_selector_mode(mode)
+	action_condition_selector.populate_from_scene(scene_root)
+	_popup_centered_on_editor(action_condition_selector)
+	print("[FlowKit] Action/condition selector should be visible now")
+
+func _open_selector_for_condition() -> void:
+	"""Open selector for condition selection (from node selection workflow)."""
+	_open_action_condition_selector(ActionConditionSelector.SelectorMode.CONDITION)
+
+func _open_selector_for_action() -> void:
+	"""Open selector for action selection (from node selection workflow)."""
+	_open_action_condition_selector(ActionConditionSelector.SelectorMode.ACTION)
+
+func _on_action_condition_selected(node_path: String, item_id: String, item_inputs: Array, parameter_values: Dictionary) -> void:
+	"""Handle selection from the action/condition selector."""
+	action_condition_selector.hide()
+	
+	match pending_block_type:
+		"event":
+			_finalize_event_creation(parameter_values)
+		"event_in_group":
+			_finalize_event_in_group(parameter_values)
+		"event_edit":
+			_update_event_inputs(parameter_values)
+		"event_replace":
+			_replace_event(parameter_values)
+		"condition":
+			_finalize_condition_from_selector(node_path, item_id, parameter_values)
+		"action":
+			_finalize_action_from_selector(node_path, item_id, parameter_values)
+		"condition_replace":
+			pending_node_path = node_path
+			pending_id = item_id
+			_replace_condition(parameter_values)
+		"action_replace":
+			pending_node_path = node_path
+			pending_id = item_id
+			_replace_action(parameter_values)
+		"condition_edit":
+			_update_condition_from_selector(node_path, item_id, parameter_values)
+		"action_edit":
+			_update_action_from_selector(node_path, item_id, parameter_values)
+
+func _finalize_condition_from_selector(node_path: String, condition_id: String, inputs: Dictionary) -> void:
+	"""Add condition to the current event row from selector."""
+	# Push undo state before adding condition
+	_push_undo_state()
+	
+	var data = FKEventCondition.new()
+	data.condition_id = condition_id
+	data.target_node = node_path
+	data.inputs = inputs
+	data.negated = false
+	data.actions = [] as Array[FKEventAction]
+	
+	if pending_target_row and pending_target_row.has_method("add_condition"):
+		pending_target_row.add_condition(data)
+	
+	_show_content_state()
+	_reset_workflow()
+	_save_sheet()
+
+func _finalize_action_from_selector(node_path: String, action_id: String, inputs: Dictionary) -> void:
+	"""Add action to the current event row from selector."""
+	# Push undo state before adding action
+	_push_undo_state()
+	
+	var data = FKEventAction.new()
+	data.action_id = action_id
+	data.target_node = node_path
+	data.inputs = inputs
+	
+	if pending_target_row and pending_target_row.has_method("add_action"):
+		pending_target_row.add_action(data)
+	
+	_show_content_state()
+	_reset_workflow()
+	_save_sheet()
+
+func _update_condition_from_selector(node_path: String, condition_id: String, inputs: Dictionary) -> void:
+	"""Update existing condition from selector (edit mode)."""
+	if not pending_target_item or not is_instance_valid(pending_target_item):
+		_reset_workflow()
+		return
+	
+	var cond_data = pending_target_item.get_condition_data()
+	if not cond_data:
+		_reset_workflow()
+		return
+	
+	# Push undo state before updating
+	_push_undo_state()
+	
+	# Update the condition data
+	cond_data.condition_id = condition_id
+	cond_data.target_node = NodePath(node_path)
+	cond_data.inputs = inputs
+	
+	# Update the display
+	if pending_target_item.has_method("update_display"):
+		pending_target_item.update_display()
+	elif pending_target_row and pending_target_row.has_method("update_display"):
+		pending_target_row.update_display()
+	
+	_reset_workflow()
+	_save_sheet()
+
+func _update_action_from_selector(node_path: String, action_id: String, inputs: Dictionary) -> void:
+	"""Update existing action from selector (edit mode)."""
+	if not pending_target_item or not is_instance_valid(pending_target_item):
+		_reset_workflow()
+		return
+	
+	var act_data = pending_target_item.get_action_data()
+	if not act_data:
+		_reset_workflow()
+		return
+	
+	# Push undo state before updating
+	_push_undo_state()
+	
+	# Update the action data
+	act_data.action_id = action_id
+	act_data.target_node = NodePath(node_path)
+	act_data.inputs = inputs
+	
+	# Update the display
+	if pending_target_item.has_method("update_display"):
+		pending_target_item.update_display()
+	elif pending_target_row and pending_target_row.has_method("update_display"):
+		pending_target_row.update_display()
+	
+	_reset_workflow()
+	_save_sheet()
 
 # === Condition/Action Edit Handlers ===
 
@@ -1735,26 +1905,30 @@ func _on_condition_edit_requested(condition_item, bound_row) -> void:
 	if not cond_data:
 		return
 	
-	# Get condition provider to check if it has inputs
-	var provider_inputs = []
-	if registry:
-		for provider in registry.condition_providers:
-			if provider.has_method("get_id") and provider.get_id() == cond_data.condition_id:
-				if provider.has_method("get_inputs"):
-					provider_inputs = provider.get_inputs()
-				break
+	var scene_root = editor_interface.get_edited_scene_root()
+	if not scene_root:
+		print("[FlowKit] ERROR: No scene root available for editing condition!")
+		return
 	
-	if provider_inputs.size() > 0:
-		pending_target_row = bound_row
-		pending_target_item = condition_item
-		pending_block_type = "condition_edit"
-		pending_id = cond_data.condition_id
-		pending_node_path = str(cond_data.target_node)
-		
-		expression_modal.populate_inputs(str(cond_data.target_node), cond_data.condition_id, provider_inputs, cond_data.inputs)
-		_popup_centered_on_editor(expression_modal)
-	else:
-		print("Condition has no inputs to edit")
+	if not action_condition_selector:
+		print("[FlowKit] ERROR: action_condition_selector is null!")
+		return
+	
+	pending_target_row = bound_row
+	pending_target_item = condition_item
+	pending_block_type = "condition_edit"
+	pending_id = cond_data.condition_id
+	pending_node_path = str(cond_data.target_node)
+	
+	# Open the selector in edit mode
+	action_condition_selector.open_for_edit(
+		ActionConditionSelector.SelectorMode.CONDITION,
+		str(cond_data.target_node),
+		cond_data.condition_id,
+		cond_data.inputs,
+		scene_root
+	)
+	_popup_centered_on_editor(action_condition_selector)
 
 func _on_action_edit_requested(action_item, bound_row) -> void:
 	"""Handle double-click on action to edit its inputs."""
@@ -1762,26 +1936,30 @@ func _on_action_edit_requested(action_item, bound_row) -> void:
 	if not act_data:
 		return
 	
-	# Get action provider to check if it has inputs
-	var provider_inputs = []
-	if registry:
-		for provider in registry.action_providers:
-			if provider.has_method("get_id") and provider.get_id() == act_data.action_id:
-				if provider.has_method("get_inputs"):
-					provider_inputs = provider.get_inputs()
-				break
+	var scene_root = editor_interface.get_edited_scene_root()
+	if not scene_root:
+		print("[FlowKit] ERROR: No scene root available for editing action!")
+		return
 	
-	if provider_inputs.size() > 0:
-		pending_target_row = bound_row
-		pending_target_item = action_item
-		pending_block_type = "action_edit"
-		pending_id = act_data.action_id
-		pending_node_path = str(act_data.target_node)
-		
-		expression_modal.populate_inputs(str(act_data.target_node), act_data.action_id, provider_inputs, act_data.inputs)
-		_popup_centered_on_editor(expression_modal)
-	else:
-		print("Action has no inputs to edit")
+	if not action_condition_selector:
+		print("[FlowKit] ERROR: action_condition_selector is null!")
+		return
+	
+	pending_target_row = bound_row
+	pending_target_item = action_item
+	pending_block_type = "action_edit"
+	pending_id = act_data.action_id
+	pending_node_path = str(act_data.target_node)
+	
+	# Open the selector in edit mode
+	action_condition_selector.open_for_edit(
+		ActionConditionSelector.SelectorMode.ACTION,
+		str(act_data.target_node),
+		act_data.action_id,
+		act_data.inputs,
+		scene_root
+	)
+	_popup_centered_on_editor(action_condition_selector)
 
 # === Drag and Drop Handlers ===
 

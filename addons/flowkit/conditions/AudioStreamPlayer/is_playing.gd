@@ -15,6 +15,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["AudioStreamPlayer", "AudioStreamPlayer2D", "AudioStreamPlayer3D"]
 
+func get_category() -> String:
+	return "Audio"
+
 func check(node: Node, inputs: Dictionary) -> bool:
 	if node and (node is AudioStreamPlayer or node is AudioStreamPlayer2D or node is AudioStreamPlayer3D):
 		return node.playing

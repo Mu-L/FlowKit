@@ -34,14 +34,14 @@ theme_override_constants/separation = 6
 [node name="Icon" type="Label" parent="Panel/Margin/HBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.6, 0.95, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 14
 text = "▸"
 
 [node name="Label" type="Label" parent="Panel/Margin/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.9, 0.92, 0.95, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 13
 text = "Action"
 text_overrun_behavior = 3
 

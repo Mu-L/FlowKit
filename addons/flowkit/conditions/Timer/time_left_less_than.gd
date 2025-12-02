@@ -17,6 +17,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["Timer"]
 
+func get_category() -> String:
+	return "Timer"
+
 func check(node: Node, inputs: Dictionary) -> bool:
 	if node and node is Timer:
 		var value: float = inputs.get("Value", 0.0)

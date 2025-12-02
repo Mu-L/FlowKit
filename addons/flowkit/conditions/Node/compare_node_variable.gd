@@ -12,17 +12,23 @@ func get_name() -> String:
 func get_inputs() -> Array[Dictionary]:
 	return [
 		{"name": "Property", "type": "String", "description": "The property expression to compare (e.g., 'velocity.x', 'position', 'node.global_position.y')."},
-		{"name": "Comparison", "type": "String", "description": "The comparison operator (==, !=, <, >, <=, >=)."},
+		{"name": "Comparison", "type": "String", "description": "The comparison operator.", "options": ["== (Equal)", "!= (Not Equal)", "< (Less Than)", "> (Greater Than)", "<= (Less or Equal)", ">= (Greater or Equal)"], "default": "== (Equal)"},
 		{"name": "Value", "type": "Variant", "description": "The value to compare against. Can be a literal (1, 1.0, true, \"text\") or expression (node.speed, node.position.length())."}
 	]
 
 func get_supported_types() -> Array[String]:
 	return ["Node"]
 
+func get_category() -> String:
+	return "Variables"
+
 func check(node: Node, inputs: Dictionary) -> bool:
 	var property_expr: String = str(inputs.get("Property", ""))
-	var comparison: String = str(inputs.get("Comparison", "=="))
+	var comparison_raw: String = str(inputs.get("Comparison", "=="))
 	var compare_value: Variant = inputs.get("Value", null)
+	
+	# Extract operator from format "== (Equal)" -> "=="
+	var comparison: String = comparison_raw.split(" ")[0]
 	
 	if property_expr.is_empty():
 		return false

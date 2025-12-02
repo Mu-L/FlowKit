@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="FKEventSheet" load_steps=6 format=3 uid="uid://ruht4jnvn1ex"]
+
+[ext_resource type="Script" uid="uid://b1y3c8rnt2rcg" path="res://addons/flowkit/resources/fk_comment.gd" id="1_wdx34"]
+[ext_resource type="Script" uid="uid://bxdhylwvr4osy" path="res://addons/flowkit/resources/event_block.gd" id="2_bitam"]
+[ext_resource type="Script" uid="uid://bmaxurgrsv4ct" path="res://addons/flowkit/resources/event_condition.gd" id="4_iywkr"]
+[ext_resource type="Script" path="res://addons/flowkit/resources/fk_group.gd" id="5_4tr38"]
+[ext_resource type="Script" uid="uid://bumsyiqkp46l1" path="res://addons/flowkit/resources/event_sheet.gd" id="6_d75uh"]
+
+[resource]
+script = ExtResource("6_d75uh")

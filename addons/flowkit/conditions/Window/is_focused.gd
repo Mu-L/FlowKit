@@ -15,6 +15,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["Window"]
 
+func get_category() -> String:
+	return "Window"
+
 func check(node: Node, inputs: Dictionary) -> bool:
 	if node and node is Window:
 		return node.has_focus()

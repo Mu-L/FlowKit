@@ -12,17 +12,23 @@ func get_name() -> String:
 func get_inputs() -> Array[Dictionary]:
 	return [
 		{"name": "Name", "type": "String", "description": "The name of the variable to compare."},
-		{"name": "Comparison", "type": "String", "description": "The comparison operator to use (e.g., '==', '!=', '<', '>', '<=', '>=')."},
+		{"name": "Comparison", "type": "String", "description": "The comparison operator to use.", "options": ["== (Equal)", "!= (Not Equal)", "< (Less Than)", "> (Greater Than)", "<= (Less or Equal)", ">= (Greater or Equal)"], "default": "== (Equal)"},
 		{"name": "Value", "type": "Variant", "description": "The value to compare the variable against."}
 	]
 
 func get_supported_types() -> Array[String]:
 	return ["System"]
 
+func get_category() -> String:
+	return "Variables"
+
 func check(node: Node, inputs: Dictionary) -> bool:
 	var name: String = str(inputs.get("Name", ""))
-	var comparison: String = str(inputs.get("Comparison", "=="))
+	var comparison_raw: String = str(inputs.get("Comparison", "=="))
 	var compare_value: Variant = inputs.get("Value", null)
+	
+	# Extract operator from format "== (Equal)" -> "=="
+	var comparison: String = comparison_raw.split(" ")[0]
 	
 	var system: Node = node.get_tree().root.get_node_or_null("/root/FlowKitSystem")
 	if not system or not system.has_method("get_var"):

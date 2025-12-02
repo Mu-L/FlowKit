@@ -18,6 +18,9 @@ func get_inputs() -> Array[Dictionary]:
 func get_supported_types() -> Array[String]:
 	return ["System"]
 
+func get_category() -> String:
+	return "Variables"
+
 func execute(node: Node, inputs: Dictionary) -> void:
 	var name: String = str(inputs.get("Name", ""))
 	var value: Variant = inputs.get("Value", null)
