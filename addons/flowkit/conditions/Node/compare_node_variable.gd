@@ -20,20 +20,13 @@ func get_supported_types() -> Array[String]:
 	return ["Node"]
 
 func check(node: Node, inputs: Dictionary, block_id: String = "") -> bool:
-	var property_expr: String = str(inputs.get("Property", ""))
+	# Note: inputs are pre-evaluated by the registry, so Property is already the value
+	var current_value: Variant = inputs.get("Property", null)
 	var comparison: String = str(inputs.get("Comparison", "=="))
 	var compare_value: Variant = inputs.get("Value", null)
 	
-	if property_expr.is_empty():
+	if current_value == null:
 		return false
-	
-	# Get FKExpressionEvaluator and evaluate both sides
-	var evaluator = load("res://addons/flowkit/runtime/expression_evaluator.gd")
-	var current_value: Variant = evaluator.evaluate(property_expr, node)
-	
-	# Also evaluate the comparison value if it's a string (could be a literal or expression)
-	if compare_value is String:
-		compare_value = evaluator.evaluate(compare_value, node)
 	
 	# Perform the comparison
 	match comparison:
