@@ -51,39 +51,41 @@ FKEventSheet
 
 **Editor UI Flow** (adding actions):
 
-1. User clicks "Add Action" → `select_action_node_modal` shows scene tree
+1. User clicks "Add Action" → `select_node_modal` shows scene tree
 2. Select target node → `select_action_modal` filters actions by `get_supported_types()`
-3. Select action → `expression_editor_modal` for input parameters (if needed)
+3. Select action → `expression_modal` for input parameters (if needed)
 4. Save to `.tres` → UI refreshes with new action node
 
 **Modal Dialog Chain** (detailed workflow):
 
 ```
 Add Action Flow:
-  _on_add_action_button_pressed()
-  ↓ (stores pending_action_node_path)
-  select_action_node_modal.popup_centered()
+  _on_row_add_action()
+  ↓ (stores pending_target_row, pending_block_type = "action")
+  _start_add_workflow()
+  ↓
+  select_node_modal.popup_centered()
   ↓ emits node_selected(node_path, node_class)
-  _on_select_action_node_selected()
-  ↓ (stores pending_action_id, pending_action_inputs)
+  _on_node_selected()
+  ↓ (stores pending_node_path)
   select_action_modal.popup_centered()
   ↓ emits action_selected(node_path, action_id, inputs)
-  _on_select_action_modal_action_selected()
+  _on_action_selected()
   ↓ (if inputs.size() > 0)
-  expression_editor_modal.popup_centered()
+  expression_modal.popup_centered()
   ↓ emits expressions_confirmed(node_path, action_id, expressions)
-  _on_expression_editor_confirmed()
-  ↓ calls _create_action_with_expressions() or _update_action_with_expressions()
+  _on_expressions_confirmed()
+  ↓ calls _finalize_action_creation() or _update_action_inputs()
 
 Add Condition Flow:
-  _on_insert_condition_requested(node)
-  ↓ (stores pending_condition_node_index, pending_condition_index)
-  select_condition_node_modal → select_condition_modal → condition_expression_editor_modal
+  _on_row_add_condition()
+  ↓ (stores pending_target_row, pending_block_type = "condition")
+  _start_add_workflow()
   ↓ follows same signal chain pattern
-  _create_condition_with_expressions() or _update_condition_with_expressions()
+  _finalize_condition_creation() or _update_condition_inputs()
 ```
 
-Each modal step stores context in `pending_*` variables (e.g., `pending_action_node_path`, `pending_condition_index`) to maintain state across the workflow. Editing workflows reuse the same modals but set `is_editing_action` / `is_editing_condition` flags.
+Each modal step stores context in `pending_*` variables (e.g., `pending_node_path`, `pending_target_row`) to maintain state across the workflow. Editing workflows reuse the same modals but set `pending_block_type` to `action_edit` / `condition_edit` flags.
 
 ## Project Conventions
 
@@ -99,9 +101,9 @@ Each modal step stores context in `pending_*` variables (e.g., `pending_action_n
 
 **Provider Discovery**: Registry uses recursive directory scanning. Organize providers by node type (e.g., `actions/CharacterBody2D/`) for clarity, but structure doesn't affect registration.
 
-**Editor Interface Pattern**: Custom modals receive `EditorInterface` via `set_editor_interface()` to access scene tree and node icons. See `ui/modals/select_action.gd`.
+**Editor Interface Pattern**: Custom modals receive `EditorInterface` via `set_editor_interface()` to access scene tree and node icons. See `ui/modals/select_action_modal.gd`.
 
-**State Management**: Editor UI uses pending variables (e.g., `pending_action_node_path`) to track multi-step workflows across modal dialogs.
+**State Management**: Editor UI uses pending variables (e.g., `pending_node_path`) to track multi-step workflows across modal dialogs.
 
 ## Code Style and Naming Conventions
 
@@ -160,9 +162,9 @@ add_autoload_singleton("FlowKit", "res://addons/flowkit/runtime/flowkit_engine.g
 
 ## File References
 
-- Provider examples: `actions/Node/print.gd`, `events/on_process.gd`
+- Provider examples: `actions/Node/print_message.gd`, `events/Node/on_process.gd`
 - Resource schemas: `resources/event_sheet.gd`, `resources/event_block.gd`
-- Editor workflow: `ui/editor.gd` (\_on_add_action_button_pressed → \_create_action_with_expressions)
+- Editor workflow: `ui/main_editor.gd` (\_on_row_add_action → \_start_add_workflow)
 - Runtime loop: `runtime/flowkit_engine.gd` (\_run_sheet)
 - Generator system: `generator.gd` (auto-generates providers from node introspection)
 - Expression evaluator: `runtime/expression_evaluator.gd` (evaluates GDScript expressions in action/condition inputs)
