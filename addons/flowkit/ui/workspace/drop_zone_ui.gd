@@ -4,16 +4,19 @@ class_name DropZoneUi
 
 signal item_dropped(drag_data: Dictionary)
 
-@export var accept_type: String = ""  # "condition_item" or "action_item"
+@export var accept_type: DragTarget.Type  
+# ^DragTarget.Type.condition_item or DragTarget.Type.action_item
 
 func _can_drop_data(at_position: Vector2, data) -> bool:
-	print("Running _can_drop_data on DropZoneUi")
-	if not data is Dictionary:
+	if data is not FKDragData:
+		printerr("DropZoneUi _can_drop_data not given an FKDragData. It got: " \
+		+ str(data))
 		return false
-	var drag_type = data.get("type", "")
+		
+	var drag_data := data as FKDragData
+	var drag_type = drag_data.type
 	return drag_type == accept_type
 
 func _drop_data(at_position: Vector2, data) -> void:
-	print("Running _drop_data on DropZoneUi")
 	if _can_drop_data(at_position, data):
 		item_dropped.emit(data)

@@ -95,7 +95,7 @@ theme_override_constants/separation = 2
 layout_mode = 2
 mouse_filter = 0
 script = ExtResource("2_dropzone")
-accept_type = "condition_item"
+accept_type = 5
 
 [node name="AddConditionLabel" type="Label" parent="Panel/HBox/ConditionsColumn/ConditionDropZone" unique_id=906333729]
 layout_mode = 2
@@ -140,7 +140,7 @@ theme_override_constants/separation = 2
 layout_mode = 2
 mouse_filter = 0
 script = ExtResource("2_dropzone")
-accept_type = "action_item"
+accept_type = 2
 
 [node name="AddActionLabel" type="Label" parent="Panel/HBox/ActionsColumn/ActionDropZone" unique_id=1602909442]
 layout_mode = 2

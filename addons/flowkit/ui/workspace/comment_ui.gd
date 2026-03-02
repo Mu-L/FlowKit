@@ -112,59 +112,72 @@ func _on_text_changed() -> void:
 	# Saving happens when edit mode is exited (_set_display_mode)
 	pass
 
-func _get_drag_data(_at_position: Vector2):
+func _get_drag_data(_at_position: Vector2) -> FKDragData:
 	if is_editing:
 		return null
 	
-	# Create drag preview
+	var preview := _create_drag_preview()
+	set_drag_preview(preview)
+	
+	var drag_data := FKDragData.new(DragTarget.Type.comment, self)
+	return drag_data
+
+func _create_drag_preview() -> Control:
 	var preview := Label.new()
 	var text = comment_data.text if comment_data else ""
 	preview.text = "📝 " + (text.substr(0, 30) if text.length() > 30 else text)
 	preview.add_theme_color_override("font_color", Color(0.9, 0.85, 0.3, 0.9))
-	set_drag_preview(preview)
+	return preview
 	
-	return {"node": self, "type": "comment"}
-
 func _can_drop_data(at_position: Vector2, data) -> bool:
-	if not data is Dictionary:
+	if data is not FKDragData:
+		printerr("CommentUi _can_drop_data was not given an FKDragData. It got: " \
+		+ str(data))
 		return false
-	
-	var drag_type = data.get("type", "")
-	
+		
+	var drag_data = data as FKDragData
 	# For event_row, comment, or group drags, forward to parent (blocks_container or group)
-	if drag_type in ["event_row", "comment", "group"]:
+	if drag_data.type in [DragTarget.Type.event_row, DragTarget.Type.comment, \
+	DragTarget.Type.group]:
 		var parent = get_parent()
 		if parent and parent.has_method("_can_drop_data"):
 			var parent_pos = at_position + position
+			print("Comment passing job to parent _can_drop_data")
 			return parent._can_drop_data(parent_pos, data)
 	
 	return false
 
 func _drop_data(at_position: Vector2, data) -> void:
-	if not data is Dictionary:
+	if data is not FKDragData:
+		printerr("CommentUi _drop_data was not given an FKDragData. It got: " \
+		+ str(data))
 		return
-	
-	var drag_type = data.get("type", "")
+		
+	var drag_data = data as FKDragData
 	
 	# For event_row, comment, or group drags, forward to parent
-	if drag_type in ["event_row", "comment", "group"]:
+	if drag_data.type in [DragTarget.Type.event_row, DragTarget.Type.comment, \
+	DragTarget.Type.group]:
 		var parent = get_parent()
 		if parent and parent.has_method("_drop_data"):
 			var parent_pos = at_position + position
 			parent._drop_data(parent_pos, data)
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.double_click and not is_editing:
-				_set_edit_mode()
-				accept_event()
-			else:
-				selected.emit(self)
-				accept_event()
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			_show_context_menu(event.global_position)
+	var mouse_click: bool = event is InputEventMouseButton and event.pressed
+	if not mouse_click:
+		return
+		
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		if event.double_click and not is_editing:
+			_set_edit_mode()
 			accept_event()
+		else:
+			selected.emit(self)
+			accept_event()
+	elif event.button_index == MOUSE_BUTTON_RIGHT:
+		_show_context_menu(event.global_position)
+		accept_event()
 
 func _show_context_menu(pos: Vector2) -> void:
 	var menu = PopupMenu.new()

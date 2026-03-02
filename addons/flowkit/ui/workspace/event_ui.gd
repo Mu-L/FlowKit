@@ -33,7 +33,8 @@ func _toggle_subs(on: bool):
 		context_menu.id_pressed.disconnect(_on_context_menu_id_pressed)
 		
 func _on_gui_input(event: InputEvent) -> void:
-	if event is not InputEventMouseButton or not event.pressed:
+	var mouse_click: bool = event is InputEventMouseButton and event.pressed
+	if not mouse_click:
 		return
 		
 	if event.button_index == MOUSE_BUTTON_LEFT:
@@ -117,15 +118,13 @@ func _update_panel_style():
 		
 	panel.add_theme_stylebox_override("panel", style)
 	
-func _get_drag_data(at_position: Vector2):
+func _get_drag_data(at_position: Vector2) -> FKDragData:
 	var drag_preview := _create_drag_preview()
 	set_drag_preview(drag_preview)
 	
 	# Return drag data with type information
-	return {
-		"type": "event",
-		"node": self
-	}
+	var drag_data := FKDragData.new(DragTarget.Type.event, self)
+	return drag_data
 
 func _create_drag_preview() -> Control:
 	var preview_label := Label.new()

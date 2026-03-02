@@ -4,26 +4,29 @@ class_name FKVBoxContainer
 
 func _can_drop_data(at_position: Vector2, data) -> bool:
 	# Check if data is a dictionary with our expected structure
-	if not data is Dictionary:
+	var drag_data := data as FKDragData
+	if not drag_data:
 		return false
 	
-	if not data.has("node") or not data.has("type"):
+	if not data.node or not data.type:
 		return false
 	
-	var node = data.get("node")
+	var node = drag_data.node
 	
 	# Verify the node is a child of this container
 	if not is_instance_valid(node) or node.get_parent() != self:
 		return false
 	
 	# Only allow dragging event, condition, and action nodes
-	return data.get("type") in ["event", "condition", "action"]
+	return drag_data.type in [DragTarget.Type.event, DragTarget.Type.condition, \
+	DragTarget.Type.action]
 
 func _drop_data(at_position: Vector2, data):
-	if not data is Dictionary or not data.has("node"):
+	var drag_data := data as FKDragData
+	if not drag_data or not drag_data.node:
 		return
 	
-	var dragged_node = data.get("node")
+	var dragged_node = drag_data.node
 	
 	if not is_instance_valid(dragged_node) or dragged_node.get_parent() != self:
 		return

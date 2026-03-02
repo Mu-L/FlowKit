@@ -585,15 +585,12 @@ func set_selected(value: bool) -> void:
 		
 	panel.add_theme_stylebox_override("panel", style)
 
-func _get_drag_data(at_position: Vector2):
+func _get_drag_data(at_position: Vector2) -> FKDragData:
 	var drag_preview := _create_drag_preview()
 	set_drag_preview(drag_preview)
 	
-	return \
-	{
-		"type": "event_row",
-		"node": self
-	}
+	var drag_data := FKDragData.new(DragTarget.Type.event_row, self)
+	return drag_data
 
 func _create_drag_preview() -> Control:
 	var preview_label := Label.new()
@@ -609,13 +606,16 @@ func _create_drag_preview() -> Control:
 	return preview_margin
 	
 func _can_drop_data(at_position: Vector2, data) -> bool:
-	if not data is Dictionary:
+	if data is not FKDragData:
+		printerr("EventRowUi's _can_drop_data was not passed an FKDragData. It was given: " \
+		+ str(data))
 		return false
-	
-	var drag_type = data.get("type", "")
+		
+	var drag_data := data as FKDragData
+	var drag_type := drag_data.type
 	
 	# For event_row, comment, or group drags, let the parent (blocks_container or group) handle it
-	if drag_type in ["event_row", "comment", "group"]:
+	if drag_type in [DragTarget.Type.event_row, DragTarget.Type.comment, DragTarget.Type.group]:
 		# Forward to parent
 		var parent = get_parent()
 		if parent and parent.has_method("_can_drop_data"):
@@ -623,28 +623,31 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 			return parent._can_drop_data(parent_pos, data)
 		return false
 	
-	if drag_type != "condition_item" and drag_type != "action_item":
+	if drag_type != DragTarget.Type.condition_item and drag_type != DragTarget.Type.action_item:
 		return false
 	
 	# Use simple half-width check: left half = conditions, right half = actions
 	var half_width = size.x / 2.0
 	var is_left_side = at_position.x < half_width
 	
-	if drag_type == "condition_item" and is_left_side:
+	if drag_type == DragTarget.Type.condition_item and is_left_side:
 		return true
-	elif drag_type == "action_item" and not is_left_side:
+	elif drag_type == DragTarget.Type.action_item and not is_left_side:
 		return true
 	
 	return false
 
 func _drop_data(at_position: Vector2, data) -> void:
-	if not data is Dictionary:
+	if data is not FKDragData:
+		printerr("EventRowUi _drop_data not given an FKDragData. It was given: " \
+		+ str(data))
 		return
-	
-	var drag_type = data.get("type", "")
+		
+	var drag_data := data as FKDragData
+	var drag_type = drag_data.type
 	
 	# For event_row, comment, or group drags, let the parent handle it
-	if drag_type in ["event_row", "comment", "group"]:
+	if drag_type in [DragTarget.Type.event_row, DragTarget.Type.comment, DragTarget.Type.group]:
 		var parent = get_parent()
 		if parent and parent.has_method("_drop_data"):
 			var parent_pos = at_position + position
@@ -666,17 +669,17 @@ func _drop_data(at_position: Vector2, data) -> void:
 	var is_left_side = at_position.x < half_width
 	
 	match drag_type:
-		"condition_item":
+		DragTarget.Type.condition_item:
 			if is_left_side:
-				var cond_data = data.get("data")
+				var cond_data = drag_data.data
 				if cond_data:
 					# Allow same-row drops for reordering (handled by condition_item_ui.gd)
 					# Only handle cross-row drops here
 					if source_row != self:
 						condition_dropped.emit(source_row, cond_data, self)
-		"action_item":
+		DragTarget.Type.action_item:
 			if not is_left_side:
-				var act_data = data.get("data")
+				var act_data = drag_data.data
 				if act_data:
 					# Allow same-row drops for reordering (handled by action_item_ui.gd)
 					# Only handle cross-row drops here
@@ -692,9 +695,9 @@ func _find_parent_event_row(node: Node):
 		current = current.get_parent()
 	return null
 
-func _on_condition_drop_zone_dropped(drag_data: Dictionary) -> void:
+func _on_condition_drop_zone_dropped(drag_data: FKDragData) -> void:
 	"""Handle condition dropped on the condition drop zone."""
-	var source_node = drag_data.get("node")
+	var source_node := drag_data.node
 	if not source_node or not is_instance_valid(source_node):
 		return
 	
@@ -702,13 +705,13 @@ func _on_condition_drop_zone_dropped(drag_data: Dictionary) -> void:
 	if not source_row or source_row == self:
 		return
 	
-	var cond_data = drag_data.get("data")
+	var cond_data := drag_data.data
 	if cond_data:
 		condition_dropped.emit(source_row, cond_data, self)
 
-func _on_action_drop_zone_dropped(drag_data: Dictionary) -> void:
+func _on_action_drop_zone_dropped(drag_data: FKDragData) -> void:
 	"""Handle action dropped on the action drop zone."""
-	var source_node = drag_data.get("node")
+	var source_node := drag_data.node
 	if not source_node or not is_instance_valid(source_node):
 		return
 	
@@ -716,7 +719,7 @@ func _on_action_drop_zone_dropped(drag_data: Dictionary) -> void:
 	if not source_row or source_row == self:
 		return
 	
-	var act_data = drag_data.get("data")
+	var act_data := drag_data.data
 	if act_data:
 		action_dropped.emit(source_row, act_data, self)
 

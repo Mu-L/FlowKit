@@ -75,14 +75,18 @@ func _hide_drop_indicator() -> void:
 
 func _get_drag_node(data) -> Control:
 	"""Extract the dragged node from drag data."""
-	if data is Dictionary and data.has("node"):
-		var drag_type = data.get("type", "")
-		if drag_type not in ["event_row", "comment", "group"]:
-			return null
-		return data["node"]
-	elif data is Control:
+	if data is not FKDragData and data is not Control:
+		return null
+	
+	if data is Control:
 		return data
-	return null
+		
+	var drag_data := data as FKDragData
+	var drag_type := drag_data.type
+	if drag_type not in [DragTarget.Type.event_row, DragTarget.Type.comment, DragTarget.Type.group]:
+		return null
+		
+	return drag_data.node
 
 
 func _calculate_visual_drop_index(at_position: Vector2, visible_blocks: Array) -> int:

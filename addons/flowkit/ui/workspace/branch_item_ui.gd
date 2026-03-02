@@ -401,19 +401,15 @@ func _hide_drop_indicator() -> void:
 	drop_indicator.visible = false
 	is_drop_target = false
 
-func _get_drag_data(at_position: Vector2):
+func _get_drag_data(at_position: Vector2) -> FKDragData:
 	if not action_data:
 		return null
 
 	var drag_preview := _create_drag_preview()
 	set_drag_preview(drag_preview)
-
-	return \
-	{
-		"type": "action_item",
-		"node": self,
-		"data": action_data
-	}
+	
+	var drag_data := FKDragData.new(DragTarget.Type.action_item, self, action_data)
+	return drag_data
 
 func _create_drag_preview() -> Control:
 	var preview_label := Label.new()
@@ -447,18 +443,21 @@ func _hide_body_highlight() -> void:
 	body_node.add_theme_stylebox_override("panel", body_base_stylebox)
 
 func _can_drop_data(at_position: Vector2, data) -> bool:
-	if not data is Dictionary:
+	if data is not FKDragData:
+		printerr("BranchItemUi _can_drop_data was not given an FKDragData. It was given: " \
+		+ str(data))
+		_hide_drop_indicator()
+		_hide_body_highlight()
+		return false
+		
+	var drag_data := data as FKDragData	
+
+	if drag_data.type != DragTarget.Type.action_item:
 		_hide_drop_indicator()
 		_hide_body_highlight()
 		return false
 
-	var drag_type = data.get("type", "")
-	if drag_type != "action_item":
-		_hide_drop_indicator()
-		_hide_body_highlight()
-		return false
-
-	var source_node = data.get("node")
+	var source_node = drag_data.node
 	if source_node == self:
 		_hide_drop_indicator()
 		_hide_body_highlight()
@@ -493,14 +492,16 @@ func _drop_data(at_position: Vector2, data) -> void:
 	_hide_drop_indicator()
 	_hide_body_highlight()
 
-	if not data is Dictionary:
+	if not data is FKDragData:
+		printerr("BranchItemUi _drop_data did not receive an FKDragData. It got: " \
+		+ str(data))
+		return
+		
+	var drag_data := data as FKDragData
+	if drag_data.type != DragTarget.Type	.action_item:
 		return
 
-	var drag_type = data.get("type", "")
-	if drag_type != "action_item":
-		return
-
-	var source_node = data.get("node")
+	var source_node = drag_data.node
 	if not source_node or source_node == self:
 		return
 
