@@ -19,13 +19,13 @@ signal condition_dropped(source_row, condition_data, target_row)
 signal action_dropped(source_row, action_data, target_row)
 signal before_data_changed()  # Emitted before any data modification for undo state capture
 # Branch signals
-signal add_branch_requested(event_row)  # User wants to add an IF branch
+signal add_branch_requested(event_row, branch_id)  # User wants to add a branch
 signal add_elseif_requested(branch_item, event_row)  # Add elseif after a branch
 signal add_else_requested(branch_item, event_row)  # Add else after a branch
-signal branch_condition_edit_requested(branch_item, event_row)  # Edit branch condition
+signal branch_condition_edit_requested(branch_item, event_row)  # Edit branch condition/inputs
 signal branch_action_add_requested(branch_item, event_row)  # Add action inside a branch
 signal branch_action_edit_requested(action_item, branch_item, event_row)  # Edit action inside branch
-signal nested_branch_add_requested(branch_item, event_row)  # Add nested IF branch inside a branch
+signal nested_branch_add_requested(branch_item, branch_id, event_row)  # Add nested branch inside a branch
 
 # Data
 var event_data: FKEventBlock
@@ -179,11 +179,22 @@ func _show_add_action_context_menu() -> void:
 	var popup := PopupMenu.new()
 	popup.add_item("Add Action", 0)
 	popup.add_separator()
-	popup.add_item("Add If Branch", 1)
+	# Dynamically list branch providers from registry
+	var branches: Array = []
+	if registry:
+		branches = registry.branch_providers
+	for i in range(branches.size()):
+		var branch_provider = branches[i]
+		if branch_provider.has_method("get_name"):
+			popup.add_item("Add %s" % branch_provider.get_name(), 100 + i)
 	popup.id_pressed.connect(func(id):
-		match id:
-			0: add_action_requested.emit(self)
-			1: add_branch_requested.emit(self)
+		if id == 0:
+			add_action_requested.emit(self)
+		elif id >= 100:
+			var branch_idx = id - 100
+			if branch_idx < branches.size():
+				var bid = branches[branch_idx].get_id()
+				add_branch_requested.emit(self, bid)
 		popup.queue_free()
 	)
 	add_child(popup)
@@ -344,7 +355,7 @@ func _connect_branch_item_signals(branch) -> void:
 	if branch.has_signal("before_data_changed"):
 		branch.before_data_changed.connect(func(): before_data_changed.emit())
 	if branch.has_signal("add_nested_branch_requested"):
-		branch.add_nested_branch_requested.connect(func(item): nested_branch_add_requested.emit(item, self))
+		branch.add_nested_branch_requested.connect(func(item, bid): nested_branch_add_requested.emit(item, bid, self))
 
 func _on_branch_item_delete(item) -> void:
 	before_data_changed.emit()
@@ -564,6 +575,19 @@ func _on_action_reorder(source_item, target_item, drop_above: bool) -> void:
 	_update_actions()
 	data_changed.emit()
 
+func _pull_action_to_top_level(act_data) -> void:
+	"""Remove an action/branch from inside a nested branch and append it to top-level actions."""
+	if not event_data:
+		return
+	# Only act if it's actually nested (not already top-level)
+	if event_data.actions.has(act_data):
+		return
+	before_data_changed.emit()
+	if _recursive_remove_action(event_data.actions, act_data):
+		event_data.actions.append(act_data)
+		_update_actions()
+		data_changed.emit()
+
 func add_condition(condition_data: FKEventCondition) -> void:
 	if event_data:
 		event_data.conditions.append(condition_data)
@@ -681,10 +705,11 @@ func _drop_data(at_position: Vector2, data) -> void:
 			if not is_left_side:
 				var act_data = drag_data.data
 				if act_data:
-					# Allow same-row drops for reordering (handled by action_item_ui.gd)
-					# Only handle cross-row drops here
 					if source_row != self:
 						action_dropped.emit(source_row, act_data, self)
+					else:
+						# Same-row: source is inside a branch — pull it out to top level
+						_pull_action_to_top_level(act_data)
 
 func _find_parent_event_row(node: Node):
 	"""Find the event_row that contains this node."""
@@ -716,12 +741,16 @@ func _on_action_drop_zone_dropped(drag_data: FKDragData) -> void:
 		return
 	
 	var source_row = _find_parent_event_row(source_node)
-	if not source_row or source_row == self:
+	if not source_row:
 		return
 	
 	var act_data := drag_data.data
 	if act_data:
-		action_dropped.emit(source_row, act_data, self)
+		if source_row == self:
+			# Same row — pull nested item to top level
+			_pull_action_to_top_level(act_data)
+		else:
+			action_dropped.emit(source_row, act_data, self)
 
 func _exit_tree():
 	_toggle_subs(false)
