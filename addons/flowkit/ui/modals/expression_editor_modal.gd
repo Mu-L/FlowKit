@@ -41,6 +41,11 @@ func set_editor_interface(interface: EditorInterface) -> void:
 	if is_node_ready():
 		call_deferred("_setup_node_tree")
 
+func set_registry(reg: FKRegistry):
+	registry = reg
+	
+var registry: FKRegistry
+
 func populate_inputs(node_path: String, action_id: String, inputs: Array, \
 current_values: Dictionary = {}) -> void:
 	selected_node_path = node_path

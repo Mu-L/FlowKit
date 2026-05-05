@@ -16,6 +16,16 @@ var available_events: Array = []
 var _all_items_cache: Array = []
 var _recent_items_manager: Variant = null
 
+func set_editor_interface(interface: EditorInterface) -> void:
+	editor_interface = interface
+
+var editor_interface: EditorInterface
+
+func set_registry(reg: FKRegistry):
+	registry = reg
+	
+var registry: FKRegistry
+
 func _ready() -> void:
 	if search_box:
 		search_box.text_changed.connect(_on_search_text_changed)

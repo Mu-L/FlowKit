@@ -66,6 +66,11 @@ func _scan_directory_recursive(path: String) -> void:
 func set_editor_interface(interface: EditorInterface):
 	editor_interface = interface
 
+func set_registry(reg: FKRegistry):
+	registry = reg
+	
+var registry: FKRegistry
+
 func populate_from_scene(scene_root: Node) -> void:
 	if not item_list:
 		return

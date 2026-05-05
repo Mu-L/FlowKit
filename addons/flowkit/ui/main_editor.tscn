@@ -24,7 +24,7 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-[node name="Control" type="Control" unique_id=945005444 node_paths=PackedStringArray("scroll_container", "blocks_container", "empty_label", "add_event_btn", "menu_bar")]
+[node name="Control" type="Control" unique_id=945005444 node_paths=PackedStringArray("scroll_container", "blocks_container", "empty_label", "add_event_btn", "menu_bar", "select_node_modal", "select_event_modal", "select_condition_modal", "select_action_modal", "expression_modal")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -39,6 +39,11 @@ blocks_container = NodePath("OuterVBox/ScrollContainer/MarginContainer/BlocksCon
 empty_label = NodePath("OuterVBox/ScrollContainer/MarginContainer/BlocksContainer/EmptyLabel")
 add_event_btn = NodePath("OuterVBox/BottomMargin/ButtonContainer/AddEventButton")
 menu_bar = NodePath("OuterVBox/TopMargin/TopBar/MenuBar")
+select_node_modal = NodePath("SelectNodeModal")
+select_event_modal = NodePath("SelectEventModal")
+select_condition_modal = NodePath("SelectConditionModal")
+select_action_modal = NodePath("SelectActionModal")
+expression_modal = NodePath("ExpressionModal")
 
 [node name="Background" type="Panel" parent="." unique_id=1222721060]
 layout_mode = 1
@@ -186,8 +191,3 @@ visible = false
 [connection signal="pressed" from="OuterVBox/TopMargin/TopBar/AddCommentButton" to="." method="_on_add_comment_button_pressed"]
 [connection signal="pressed" from="OuterVBox/TopMargin/TopBar/AddGroupButton" to="." method="_on_add_group_button_pressed"]
 [connection signal="pressed" from="OuterVBox/BottomMargin/ButtonContainer/AddEventButton" to="." method="_on_add_event_button_pressed"]
-[connection signal="node_selected" from="SelectNodeModal" to="." method="_on_node_selected"]
-[connection signal="event_selected" from="SelectEventModal" to="." method="_on_event_selected"]
-[connection signal="action_selected" from="SelectActionModal" to="." method="_on_action_selected"]
-[connection signal="condition_selected" from="SelectConditionModal" to="." method="_on_condition_selected"]
-[connection signal="expressions_confirmed" from="ExpressionModal" to="." method="_on_expressions_confirmed"]

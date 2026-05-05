@@ -46,6 +46,16 @@ func _load_available_conditions() -> void:
 	_scan_directory_recursive(conditions_path)
 	print("Loaded ", available_conditions.size(), " conditions")
 
+func set_editor_interface(interface: EditorInterface) -> void:
+	editor_interface = interface
+		
+var editor_interface: EditorInterface
+
+func set_registry(reg: FKRegistry):
+	registry = reg
+	
+var registry: FKRegistry
+
 func _scan_directory_recursive(path: String) -> void:
 	"""Recursively scan directories for condition scripts."""
 	var dir: DirAccess = DirAccess.open(path)

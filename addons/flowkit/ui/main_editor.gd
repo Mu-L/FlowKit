@@ -23,11 +23,11 @@ var drag_spacer_bottom: Control = null  # Temporary spacer at bottom during drag
 const DRAG_SPACER_HEIGHT := 50  # Height of temporary drop zone
 
 # Modals
-@onready var select_node_modal: FKSelectNodeModal = $SelectNodeModal
-@onready var select_event_modal: FKSelectEventModal = $SelectEventModal
-@onready var select_condition_modal: FKSelectConditionModal = $SelectConditionModal
-@onready var select_action_modal: FKSelectActionModal = $SelectActionModal
-@onready var expression_modal: FKExpressionEditorModal = $ExpressionModal
+@export var select_node_modal: FKSelectNodeModal
+@export var select_event_modal: FKSelectEventModal
+@export var select_condition_modal: FKSelectConditionModal
+@export var select_action_modal: FKSelectActionModal
+@export var expression_modal: FKExpressionEditorModal
 
 # Workflow state
 var pending_block_type: String = ""  # "event", "condition", "action", "event_replace", "event_in_group", etc.
@@ -57,12 +57,20 @@ func _enter_tree() -> void:
 	
 func _toggle_subs(on: bool):
 	if on and not _is_subbed:
-		# For autosave and undo state on drag-and-drop reorder
+		# For undo state on drag-and-drop reorder
 		blocks_container.before_block_moved.connect(_push_undo_state)
-		#blocks_container.block_moved.connect(_on_auto_saver_saved)
+		select_node_modal.node_selected.connect(_on_node_selected)
+		select_event_modal.event_selected.connect(_on_event_selected)
+		select_action_modal.action_selected.connect(_on_action_selected)
+		select_condition_modal.condition_selected.connect(_on_condition_selected)
+		expression_modal.expressions_confirmed.connect(_on_expressions_confirmed)
 	elif not on and _is_subbed:
 		blocks_container.before_block_moved.disconnect(_push_undo_state)
-		#blocks_container.block_moved.disconnect(_on_auto_saver_saved)
+		select_node_modal.node_selected.disconnect(_on_node_selected)
+		select_event_modal.event_selected.disconnect(_on_event_selected)
+		select_action_modal.action_selected.disconnect(_on_action_selected)
+		select_condition_modal.condition_selected.disconnect(_on_condition_selected)
+		expression_modal.expressions_confirmed.disconnect(_on_expressions_confirmed)
 	
 	_is_subbed = on
 
@@ -103,12 +111,16 @@ func set_registry(reg: FKRegistry) -> void:
 		unit_ui_factory = FKUnitUiFactory.new(sheet_io)
 	unit_ui_factory.registry = reg
 	# Pass to modals (deferred in case they're not ready yet)
+	if select_node_modal:
+		select_node_modal.set_registry(reg)
 	if select_event_modal:
 		select_event_modal.set_registry(reg)
 	if select_condition_modal:
 		select_condition_modal.set_registry(reg)
 	if select_action_modal:
 		select_action_modal.set_registry(reg)
+	if expression_modal:
+		expression_modal.set_registry(reg)
 
 func set_generator(gen) -> void:
 	generator = gen
