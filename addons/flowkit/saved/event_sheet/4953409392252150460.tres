@@ -39,7 +39,7 @@ block_type = "action"
 
 [sub_resource type="Resource" id="Resource_jqahe"]
 script = ExtResource("1_iqjwq")
-block_id = "event_1770855419_799863400"
+block_id = "event_1778968209_1373653493"
 event_id = "on_ready"
 target_node = NodePath(".")
 actions = Array[ExtResource("2_e5301")]([SubResource("Resource_6310v"), SubResource("Resource_1iq3u"), SubResource("Resource_cbhwn")])
@@ -178,7 +178,7 @@ block_type = "action"
 
 [sub_resource type="Resource" id="Resource_7khp5"]
 script = ExtResource("1_iqjwq")
-block_id = "event_1770855273_2148236877"
+block_id = "event_1778968209_2739151933"
 event_id = "on_process_physics"
 target_node = NodePath(".")
 actions = Array[ExtResource("2_e5301")]([SubResource("Resource_lifsa"), SubResource("Resource_ercbp"), SubResource("Resource_1geuf"), SubResource("Resource_iv7s5"), SubResource("Resource_01p3u"), SubResource("Resource_jtk1k")])
@@ -188,13 +188,7 @@ block_type = "event"
 script = ExtResource("5_1iq3u")
 title = "Movement"
 color = Color(0.4105078, 0.58125, 0, 1)
-children = [{
-"data": SubResource("Resource_jqahe"),
-"type": "event"
-}, {
-"data": SubResource("Resource_7khp5"),
-"type": "event"
-}]
+children = [SubResource("Resource_jqahe"), SubResource("Resource_7khp5")]
 block_type = "group"
 
 [sub_resource type="Resource" id="Resource_fwgt7"]
@@ -219,7 +213,7 @@ block_type = "condition"
 
 [sub_resource type="Resource" id="Resource_g1hr8"]
 script = ExtResource("1_iqjwq")
-block_id = "event_1764627242_1978017420"
+block_id = "event_1778968209_1371975470"
 event_id = "on_process_physics"
 target_node = NodePath(".")
 conditions = Array[ExtResource("3_6310v")]([SubResource("Resource_toik8")])
@@ -248,7 +242,7 @@ block_type = "condition"
 
 [sub_resource type="Resource" id="Resource_0864s"]
 script = ExtResource("1_iqjwq")
-block_id = "on_key_pressed_1734183459_0987654321"
+block_id = "event_1778968209_3083873755"
 event_id = "on_process_physics"
 target_node = NodePath(".")
 conditions = Array[ExtResource("3_6310v")]([SubResource("Resource_dkghy")])
@@ -259,13 +253,7 @@ block_type = "event"
 script = ExtResource("5_1iq3u")
 title = "Sets the direction of the player sprite to flip the sprite horizontally based on if the player is moving left or right."
 color = Color(0.16839236, 0.07305908, 0.4453125, 1)
-children = [{
-"data": SubResource("Resource_g1hr8"),
-"type": "event"
-}, {
-"data": SubResource("Resource_0864s"),
-"type": "event"
-}]
+children = [SubResource("Resource_g1hr8"), SubResource("Resource_0864s")]
 block_type = "group"
 
 [sub_resource type="Resource" id="Resource_rcr8d"]
@@ -303,7 +291,7 @@ block_type = "condition"
 
 [sub_resource type="Resource" id="Resource_7ahgf"]
 script = ExtResource("1_iqjwq")
-block_id = "event_1764826324_3494989596"
+block_id = "event_1778968209_3026241755"
 event_id = "on_process_physics"
 target_node = NodePath(".")
 conditions = Array[ExtResource("3_6310v")]([SubResource("Resource_lvjr6"), SubResource("Resource_1lc76")])
@@ -345,7 +333,7 @@ block_type = "condition"
 
 [sub_resource type="Resource" id="Resource_8cdef"]
 script = ExtResource("1_iqjwq")
-block_id = "event_1764826452_1205836981"
+block_id = "event_1778968209_2520809527"
 event_id = "on_process_physics"
 target_node = NodePath(".")
 conditions = Array[ExtResource("3_6310v")]([SubResource("Resource_olurx"), SubResource("Resource_a558m")])
@@ -356,19 +344,7 @@ block_type = "event"
 script = ExtResource("5_1iq3u")
 title = "Control animations"
 color = Color(0.38236463, 0.2642212, 0.7515625, 1)
-children = [{
-"data": SubResource("Resource_rcr8d"),
-"type": "comment"
-}, {
-"data": SubResource("Resource_7ahgf"),
-"type": "event"
-}, {
-"data": SubResource("Resource_rfu3m"),
-"type": "comment"
-}, {
-"data": SubResource("Resource_8cdef"),
-"type": "event"
-}]
+children = [SubResource("Resource_rcr8d"), SubResource("Resource_7ahgf"), SubResource("Resource_rfu3m"), SubResource("Resource_8cdef")]
 block_type = "group"
 
 [resource]

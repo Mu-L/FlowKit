@@ -1,10 +1,9 @@
 @tool
-extends PopupPanel
+extends FKModalWindow
 class_name FKExpressionEditorModal
 
 signal expressions_confirmed(node_path: String, action_id: String, expressions: Dictionary)
 
-var editor_interface: EditorInterface
 var selected_node_path: String = ""
 var selected_action_id: String = ""
 var action_inputs: Array = []
@@ -24,27 +23,32 @@ var param_values: Dictionary = {}
 var selected_tree_node: Node = null
 
 func _enter_tree() -> void:
-	_toggle_subs(true)
-	if editor_interface:
-		call_deferred("_setup_node_tree")
+	super._enter_tree()
+	
+	if is_editor_preview:
+		return
+		
+	if _editor_interface:
+		_setup_node_tree.call_deferred()
 
 func _toggle_subs(on: bool):
-	if on:
+	if on and not _is_subbed:
 		node_tree.item_selected.connect(_on_node_selected)
 		item_list.item_activated.connect(_on_item_activated)
-		if editor_interface:
-			call_deferred("_setup_node_tree")
+	elif _is_subbed and not on:
+		node_tree.item_selected.disconnect(_on_node_selected)
+		item_list.item_activated.disconnect(_on_item_activated)
+	else:
+		return
 	
-func set_editor_interface(interface: EditorInterface) -> void:
-	editor_interface = interface
-	# Setup tree if we're already ready
-	if is_node_ready():
-		call_deferred("_setup_node_tree")
+	_is_subbed = on
 
-func set_registry(reg: FKRegistry):
-	registry = reg
-	
-var registry: FKRegistry
+func set_editor_interface(interface: EditorInterface) -> void:
+	var already_had_it: bool = _editor_interface != null
+	super.set_editor_interface(interface)
+	# Setup tree if we're already ready
+	if not already_had_it:
+		_setup_node_tree.call_deferred()
 
 func populate_inputs(node_path: String, action_id: String, inputs: Array, \
 current_values: Dictionary = {}) -> void:
@@ -57,11 +61,11 @@ current_values: Dictionary = {}) -> void:
 	_show_current_parameter()
 	
 	# Setup node tree if editor interface is available
-	if editor_interface:
+	if _editor_interface:
 		_setup_node_tree()
 
 func _setup_node_tree() -> void:
-	if not editor_interface:
+	if not _editor_interface:
 		return
 	
 	node_tree.clear()
@@ -69,20 +73,27 @@ func _setup_node_tree() -> void:
 	if not _scene_root:
 		return
 	
-	# Add System node as first entry (runtime autoload)
+	_base_control = _editor_interface.get_base_control()
+	_add_sys_node_entry()
+	var root_item := _create_root_item()
+	_add_node_children(_scene_root, root_item)
+
+var _base_control: Control
+
+func _add_sys_node_entry():
+	# The System Node should be a runtime Autoload.
 	var system_item: TreeItem = node_tree.create_item()
 	system_item.set_text(0, "System (FlowKitSystem)")
 	system_item.set_metadata(0, null)  # No actual node in editor
-	system_item.set_icon(0, editor_interface.get_base_control().get_theme_icon("Node", "EditorIcons"))
+	system_item.set_icon(0, _base_control.get_theme_icon("Node", "EditorIcons"))
 	
-	# Create root item
+func _create_root_item() -> TreeItem:
 	var root_item: TreeItem = node_tree.create_item()
 	root_item.set_text(0, _scene_root.name)
 	root_item.set_metadata(0, _scene_root)
-	root_item.set_icon(0, editor_interface.get_base_control().get_theme_icon("Node", "EditorIcons"))
+	root_item.set_icon(0, _base_control.get_theme_icon("Node", "EditorIcons"))
+	return root_item
 	
-	# Recursively add children
-	_add_node_children(_scene_root, root_item)
 
 func _add_node_children(node: Node, tree_item: TreeItem) -> void:
 	for child in node.get_children():
@@ -92,7 +103,7 @@ func _add_node_children(node: Node, tree_item: TreeItem) -> void:
 		
 		# Get node icon from editor
 		var icon_name: String = child.get_class()
-		var base_control := editor_interface.get_base_control()
+		var base_control := _editor_interface.get_base_control()
 		var icon: Texture2D = base_control.get_theme_icon(icon_name, "EditorIcons")
 		if icon:
 			child_item.set_icon(0, icon)
@@ -102,24 +113,24 @@ func _add_node_children(node: Node, tree_item: TreeItem) -> void:
 			_add_node_children(child, child_item)
 
 func _show_current_parameter() -> void:
-	print("In show current param")
+	print("[FKExpressionEditorModal]: In show current param")
 	if action_inputs.is_empty():
-		print("Action inputs are empty. Doing nothing.")
+		print("[FKExpressionEditorModal]: Action inputs are empty. Doing nothing.")
 		return
 	
-	print("Action inputs:\n" + str(action_inputs))
+	print("[FKExpressionEditorModal]: Action inputs:\n" + str(action_inputs))
 	var current_input = action_inputs[current_param_index]
 	var param_name: String; var param_type: String; var param_description: String;
 	var fk_action_input: FKActionInput
 	if current_input is Dictionary:
-		print("Current input is dict")
+		print("[FKExpressionEditorModal]: Current input is dict")
 		var param_dict: Dictionary = action_inputs[current_param_index]
 		param_name = param_dict.get("name", "Unknown")
 		param_type = param_dict.get("type", "Variant")
 		param_description = param_dict.get("description", "")
 		
 	elif current_input is FKActionInput:
-		print("Current input is FKActionInput")
+		print("[FKExpressionEditorModal]: Current input is FKActionInput")
 		fk_action_input = current_input
 		param_name = fk_action_input.name
 		param_type = fk_action_input.type
@@ -145,7 +156,8 @@ func _update_expr_input(param_name: String):
 func _update_nav_buttons():
 	prev_button.disabled = current_param_index == 0
 	next_button.disabled = current_param_index >= action_inputs.size() - 1
-	confirm_button.text = "Confirm" if current_param_index >= action_inputs.size() - 1 else "Next"
+	confirm_button.text = "Confirm" if current_param_index >= action_inputs.size() - 1 \
+	else "Next"
 	
 func _on_node_selected() -> void:
 	var selected_item: TreeItem = node_tree.get_selected()
@@ -173,7 +185,7 @@ func _populate_item_list_for_selected_node() -> void:
 
 var _scene_root: Node:
 	get:
-		return editor_interface.get_edited_scene_root() if editor_interface else null
+		return _editor_interface.get_edited_scene_root() if _editor_interface else null
 		
 func _add_var_items(target_node: Node):
 	if not selected_tree_node.has_meta("flowkit_variables"):
@@ -364,5 +376,3 @@ func _confirm() -> void:
 func _on_cancel_button_pressed() -> void:
 	hide()
 	
-func _exit_tree() -> void:
-	_toggle_subs(false)

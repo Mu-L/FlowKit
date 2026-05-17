@@ -1,5 +1,5 @@
 @tool
-extends PopupPanel
+extends FKModalWindow
 class_name FKSelectActionModal
 
 signal action_selected(node_path: String, action_id: String, action_inputs: Array)
@@ -8,53 +8,72 @@ var selected_node_path: String = ""
 var selected_node_class: String = ""
 var available_actions: Array = []
 
-@onready var search_box := $VBoxContainer/SearchBox
-@onready var item_list := $VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList
-@onready var description_label := $VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/ScrollContainer/DescriptionLabel
-@onready var recent_item_list := $VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList
+@export var search_box: LineEdit
+@export var item_list: ItemList
+@export var description_label: Label
+@export var recent_item_list: ItemList
+
+@export var desc_panel: Panel
+@export var desc_panel_style: StyleBoxFlat
 
 var _all_items_cache: Array = []
 var _recent_items_manager: Variant = null
 
-func set_editor_interface(interface: EditorInterface) -> void:
-	editor_interface = interface
-	
-var editor_interface: EditorInterface
-
-func set_registry(reg: FKRegistry):
-	registry = reg
-	
-var registry: FKRegistry
-
-func _ready() -> void:
-	if search_box:
-		search_box.text_changed.connect(_on_search_text_changed)
+func _enter_tree() -> void:
+	super._enter_tree()
+	if is_editor_preview or is_fully_legit:
+		return
 		
-	if item_list:
-		item_list.item_activated.connect(_on_item_activated)
-		item_list.item_selected.connect(_on_item_selected)
-	
-	if recent_item_list:
-		recent_item_list.item_activated.connect(_on_recent_item_activated)
-	
-	# Set description panel style
-	var panel = $VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.2, 0.2, 0.2, 0.8)
-	panel.add_theme_stylebox_override("panel", style)
-	
-	# Load recent items manager
-	_recent_items_manager = load("res://addons/flowkit/ui/modals/recent_items_manager.gd").new()
-	
-	# Load all available actions
+	_recent_items_manager = FKRecentItemsManagerUi.new()
 	_load_available_actions()
 
+func _ensure_export_fields_filled():
+	var path: String
+	if not search_box:
+		path = "VBoxContainer/SearchBox"
+		search_box = get_node(path)
+		
+	if not item_list:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList"
+		item_list = get_node(path)
+		
+	if not description_label:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/" +\
+		"ScrollContainer/DescriptionLabel"
+		description_label = get_node(path)
+		
+	if not recent_item_list:
+		path = "VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList"
+		recent_item_list = get_node(path)
+		
+	if not desc_panel:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel"
+		desc_panel = get_node(path)
+	
+func _set_desc_panel_style():
+	desc_panel.add_theme_stylebox_override("panel", desc_panel_style)
+	
+func _toggle_subs(should_sub: bool):
+	if should_sub and not _is_subbed:
+		search_box.text_changed.connect(_on_search_text_changed)
+		item_list.item_activated.connect(_on_item_activated)
+		item_list.item_selected.connect(_on_item_selected)
+		recent_item_list.item_activated.connect(_on_recent_item_activated)
+
+	elif _is_subbed and !should_sub:
+		search_box.text_changed.disconnect(_on_search_text_changed)
+		item_list.item_activated.disconnect(_on_item_activated)
+		item_list.item_selected.disconnect(_on_item_selected)
+		recent_item_list.item_activated.disconnect(_on_recent_item_activated)
+		
+	_is_subbed = should_sub
+	
 func _load_available_actions() -> void:
 	"""Load all action scripts from the actions folder."""
 	available_actions.clear()
 	var actions_path: String = "res://addons/flowkit/actions"
 	_scan_directory_recursive(actions_path)
-	print("Loaded ", available_actions.size(), " actions")
+	print("[FKSelectActionModal]: Loaded ", available_actions.size(), " actions")
 
 func _scan_directory_recursive(path: String) -> void:
 	"""Recursively scan directories for action scripts."""
@@ -163,7 +182,7 @@ func _on_item_activated(index: int) -> void:
 			action_name = action.get_name()
 			break
 	
-	print("Action selected: ", action_id, " for node: ", selected_node_path)
+	print("[FKSelectActionModal]: Action selected: ", action_id, " for node: ", selected_node_path)
 	_recent_items_manager.add_recent_action(action_id, action_name, selected_node_class)
 	action_selected.emit(selected_node_path, action_id, inputs)
 	hide()
@@ -225,6 +244,6 @@ func _on_recent_item_activated(index: int) -> void:
 			action_inputs = action.get_inputs()
 			break
 	
-	print("Recent action selected: ", action_id, " for node: ", selected_node_path)
+	print("[FKSelectActionModal]: Recent action selected: ", action_id, " for node: ", selected_node_path)
 	action_selected.emit(selected_node_path, action_id, action_inputs)
 	hide()

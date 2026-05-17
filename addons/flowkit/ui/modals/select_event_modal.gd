@@ -1,5 +1,5 @@
 @tool
-extends PopupPanel
+extends FKModalWindow
 class_name FKSelectEventModal
 
 signal event_selected(node_path: String, event_id: String, event_inputs: Array)
@@ -8,53 +8,77 @@ var selected_node_path: String = ""
 var selected_node_class: String = ""
 var available_events: Array = []
 
-@onready var search_box := $VBoxContainer/SearchBox
-@onready var item_list := $VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList
-@onready var description_label := $VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/ScrollContainer/DescriptionLabel
-@onready var recent_item_list := $VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList
+@export_category("UI")
+@export var search_box: LineEdit 
+@export var item_list: ItemList 
+@export var description_label: Label 
+@export var recent_item_list: ItemList 
+@export var desc_panel: Panel
+
+@export_category("Styling")
+@export var desc_panel_style: StyleBoxFlat
 
 var _all_items_cache: Array = []
-var _recent_items_manager: Variant = null
 
-func set_editor_interface(interface: EditorInterface) -> void:
-	editor_interface = interface
-
-var editor_interface: EditorInterface
-
-func set_registry(reg: FKRegistry):
-	registry = reg
+func _enter_tree() -> void:
+	super._enter_tree()
 	
-var registry: FKRegistry
-
-func _ready() -> void:
-	if search_box:
-		search_box.text_changed.connect(_on_search_text_changed)
+	if is_editor_preview or is_fully_legit:
+		return
 		
-	if item_list:
-		item_list.item_activated.connect(_on_item_activated)
-		item_list.item_selected.connect(_on_item_selected)
-	
-	if recent_item_list:
-		recent_item_list.item_activated.connect(_on_recent_item_activated)
-	
-	# Set description panel style
-	var panel = $VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.2, 0.2, 0.2, 0.8)
-	panel.add_theme_stylebox_override("panel", style)
-	
-	# Load recent items manager
-	_recent_items_manager = load("res://addons/flowkit/ui/modals/recent_items_manager.gd").new()
-	
-	# Load all available events
+	_recent_items_manager = FKRecentItemsManagerUi.new()
 	_load_available_events()
 
+var _recent_items_manager: Variant = null
+
+func _ensure_export_fields_filled():
+	var path: String
+	if not search_box:
+		path = "VBoxContainer/SearchBox"
+		search_box = get_node(path)
+		
+	if not item_list:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList"
+		item_list = get_node(path)
+		
+	if not description_label:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/" +\
+		"ScrollContainer/DescriptionLabel"
+		description_label = get_node(path)
+	
+	if not recent_item_list:
+		path = "VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList"
+		recent_item_list = get_node(path)
+		
+	if not desc_panel:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel"
+		desc_panel = get_node(path)
+		
+func _apply_styling():
+	desc_panel.add_theme_stylebox_override("panel", desc_panel_style)
+		
+func _toggle_subs(on: bool):
+	if on and not _is_subbed:
+		search_box.text_changed.connect(_on_search_text_changed)
+		item_list.item_activated.connect(_on_item_activated)
+		item_list.item_selected.connect(_on_item_selected)
+		recent_item_list.item_activated.connect(_on_recent_item_activated)
+	elif _is_subbed and !on:
+		search_box.text_changed.disconnect(_on_search_text_changed)
+		item_list.item_activated.disconnect(_on_item_activated)
+		item_list.item_selected.disconnect(_on_item_selected)
+		recent_item_list.item_activated.disconnect(_on_recent_item_activated)
+	else:
+		return
+		
+	_is_subbed = on
+	
 func _load_available_events() -> void:
 	"""Load all event scripts from the events folder."""
 	available_events.clear()
-	var events_path: String = "res://addons/flowkit/events"
+	var events_path: String = FKEditorGlobals.PATH_TO_EVENTS_FOLDER
 	_scan_directory_recursive(events_path)
-	print("Loaded ", available_events.size(), " events")
+	print("[FKSelectEventModal]: Loaded ", available_events.size(), " events")
 
 func _scan_directory_recursive(path: String) -> void:
 	"""Recursively scan directories for event scripts."""
@@ -178,7 +202,7 @@ func _on_item_activated(index: int) -> void:
 				event_name = event.get_name()
 			break
 	
-	print("Event selected: ", event_id, " for node: ", selected_node_path, " with inputs: ", event_inputs)
+	print("[FKSelectEventModal]: Event selected: ", event_id, " for node: ", selected_node_path, " with inputs: ", event_inputs)
 	_recent_items_manager.add_recent_event(event_id, event_name, selected_node_class)
 	event_selected.emit(selected_node_path, event_id, event_inputs)
 	hide()
@@ -240,6 +264,6 @@ func _on_recent_item_activated(index: int) -> void:
 				event_inputs = event.get_inputs()
 			break
 	
-	print("Recent event selected: ", event_id, " for node: ", selected_node_path)
+	print("[FKSelectEventModal]: Recent event selected: ", event_id, " for node: ", selected_node_path)
 	event_selected.emit(selected_node_path, event_id, event_inputs)
 	hide()

@@ -1,5 +1,5 @@
 @tool
-extends PopupPanel
+extends FKModalWindow
 class_name FKSelectConditionModal
 
 signal condition_selected(node_path: String, condition_id: String, condition_inputs: Array)
@@ -8,53 +8,80 @@ var selected_node_path: String = ""
 var selected_node_class: String = ""
 var available_conditions: Array = []
 
-@onready var search_box := $VBoxContainer/SearchBox
-@onready var item_list := $VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList
-@onready var description_label := $VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/ScrollContainer/DescriptionLabel
-@onready var recent_item_list := $VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList
+@export var search_box: LineEdit
+@export var item_list: ItemList
+@export var description_label: Label
+@export var recent_item_list: ItemList
+@export var desc_panel: Panel
+@export var desc_panel_style: StyleBoxFlat
 
 var _all_items_cache: Array = []
 var _recent_items_manager: Variant = null
 
-func _ready() -> void:
-	if search_box:
+
+func _toggle_subs(should_sub: bool):
+	if should_sub and not _is_subbed:
 		search_box.text_changed.connect(_on_search_text_changed)
-		
-	if item_list:
 		item_list.item_activated.connect(_on_item_activated)
 		item_list.item_selected.connect(_on_item_selected)
-	
-	if recent_item_list:
 		recent_item_list.item_activated.connect(_on_recent_item_activated)
+	elif _is_subbed and !should_sub:
+		search_box.text_changed.disconnect(_on_search_text_changed)
+		item_list.item_activated.disconnect(_on_item_activated)
+		item_list.item_selected.disconnect(_on_item_selected)
+		recent_item_list.item_activated.disconnect(_on_recent_item_activated)
+	else:
+		return
+		
+	_is_subbed = should_sub
 	
-	# Set description panel style
-	var panel = $VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.2, 0.2, 0.2, 0.8)
-	panel.add_theme_stylebox_override("panel", style)
+
+func _enter_tree() -> void:
+	super._enter_tree()
 	
-	# Load recent items manager
-	_recent_items_manager = load("res://addons/flowkit/ui/modals/recent_items_manager.gd").new()
+	if is_editor_preview or is_fully_legit:
+		return
 	
-	# Load all available conditions
+	_recent_items_manager = FKRecentItemsManagerUi.new()
 	_load_available_conditions()
+
+func _ensure_export_fields_filled():
+	var path: String
+	if not search_box:
+		path = "VBoxContainer/SearchBox"
+		search_box = get_node(path)
+	
+	if not item_list:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList"
+		item_list = get_node(path)
+		
+	if not description_label:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/" +\
+		"ScrollContainer/DescriptionLabel"
+		description_label = get_node(path)
+		
+	if not recent_item_list:
+		path = "VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList"
+		recent_item_list = get_node(path)
+		
+	if not desc_panel:
+		path = "VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel"
+		desc_panel = get_node(path)
+			
+func _set_desc_panel_style():
+	if not desc_panel_style:
+		desc_panel_style = StyleBoxFlat.new()
+		desc_panel_style.bg_color = Color(0.2, 0.2, 0.2, 0.8)
+	desc_panel.add_theme_stylebox_override("panel", desc_panel_style)
+	
 
 func _load_available_conditions() -> void:
 	"""Load all condition scripts from the conditions folder."""
 	available_conditions.clear()
 	var conditions_path: String = "res://addons/flowkit/conditions"
 	_scan_directory_recursive(conditions_path)
-	print("Loaded ", available_conditions.size(), " conditions")
+	print("[FKSelectConditionModal]: Loaded ", available_conditions.size(), " conditions")
 
-func set_editor_interface(interface: EditorInterface) -> void:
-	editor_interface = interface
-		
-var editor_interface: EditorInterface
-
-func set_registry(reg: FKRegistry):
-	registry = reg
-	
-var registry: FKRegistry
 
 func _scan_directory_recursive(path: String) -> void:
 	"""Recursively scan directories for condition scripts."""
@@ -163,7 +190,7 @@ func _on_item_activated(index: int) -> void:
 			condition_name = condition.get_name()
 			break
 	
-	print("Condition selected: ", condition_id, " for node: ", selected_node_path)
+	print("[FKSelectConditionModal]: Condition selected: ", condition_id, " for node: ", selected_node_path)
 	_recent_items_manager.add_recent_condition(condition_id, condition_name, selected_node_class)
 	condition_selected.emit(selected_node_path, condition_id, inputs)
 	hide()
@@ -184,8 +211,7 @@ func _on_item_selected(index: int) -> void:
 			break
 
 func _on_popup_hide() -> void:
-	if search_box:
-		search_box.clear()
+	search_box.clear()
 
 func _populate_recent_list() -> void:
 	"""Populate the recent conditions list."""
@@ -225,6 +251,6 @@ func _on_recent_item_activated(index: int) -> void:
 			condition_inputs = condition.get_inputs()
 			break
 	
-	print("Recent condition selected: ", condition_id, " for node: ", selected_node_path)
+	print("[FKSelectConditionModal]: Recent condition selected: ", condition_id, " for node: ", selected_node_path)
 	condition_selected.emit(selected_node_path, condition_id, condition_inputs)
 	hide()

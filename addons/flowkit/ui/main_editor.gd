@@ -8,9 +8,12 @@ var registry: FKRegistry
 var generator
 var current_scene_uid: int = 0
 
+## Whether or not FlowKit auto-saves sheets in response to things
+## like adding or editing Actions.
 @export var auto_save_sheets: bool = true
 
 # UI References
+@export_category("UI")
 @export var scroll_container: ScrollContainer
 @export var blocks_container: FKBlockContainerUi
 @export var empty_label: Label
@@ -23,11 +26,11 @@ var drag_spacer_bottom: Control = null  # Temporary spacer at bottom during drag
 const DRAG_SPACER_HEIGHT := 50  # Height of temporary drop zone
 
 # Modals
-@export var select_node_modal: FKSelectNodeModal
-@export var select_event_modal: FKSelectEventModal
-@export var select_condition_modal: FKSelectConditionModal
-@export var select_action_modal: FKSelectActionModal
-@export var expression_modal: FKExpressionEditorModal
+var select_node_modal: FKSelectNodeModal
+var select_event_modal: FKSelectEventModal
+var select_condition_modal: FKSelectConditionModal
+var select_action_modal: FKSelectActionModal
+var expression_modal: FKExpressionEditorModal
 
 # Workflow state
 var pending_block_type: String = ""  # "event", "condition", "action", "event_replace", "event_in_group", etc.
@@ -49,14 +52,93 @@ var serializer := FKSerializationManager.new()
 var unit_ui_factory: FKUnitUiFactory
 var sheet_auto_saver: FKSheetAutoSaver = FKSheetAutoSaver.new()
 
+func legitimize():
+	if !is_editor_preview:
+		return
+	
+	_is_editor_preview = false
+	_enter_tree()
+	_is_legit = true
+
+var is_editor_preview: bool:
+	get:
+		return _is_editor_preview
+		
+var _is_editor_preview := true
+
 func _enter_tree() -> void:
+	if is_editor_preview:
+		print("[FKMainEditor]: Entered tree as editor preview instance. Instance id: " + str(get_instance_id()))
+		return
+	if is_legit:
+		return
+	print("[FKMainEditor]: Entered tree as legit instance. Instance id: " + str(get_instance_id()))
 	unit_ui_factory = FKUnitUiFactory.new(sheet_io)
 	sheet_auto_saver.init(self, auto_save_sheets)
 	input_manager.initialize(self)
+	_prep_modals()
 	_toggle_subs(true)
+
+var is_legit: bool:
+	get:
+		return _is_legit
+
+var _is_legit := false 
+# ^Need this to keep the same main editor instance from entering the tree twice
+
+func _prep_modals():
+	_create_modals()
+	_refresh_modal_cache()
+	_hide_modals()
+	_legitimize_modals()
+	
+func _create_modals():
+	var path: String
+	var scene: PackedScene = null
+	
+	path = FKModalPaths.SELECT_NODE_MODAL
+	scene = load(path)
+	select_node_modal = scene.instantiate()
+	add_child(select_node_modal)
+		
+	path = FKModalPaths.SELECT_EVENT_MODAL
+	scene = load(path)
+	select_event_modal = scene.instantiate()
+	add_child(select_event_modal)
+		
+	path = FKModalPaths.SELECT_CONDITION_MODAL
+	scene = load(path)
+	select_condition_modal = scene.instantiate()
+	add_child(select_condition_modal)
+		
+	path = FKModalPaths	.SELECT_ACTION_MODAL
+	scene = load(path)
+	select_action_modal = scene.instantiate()
+	add_child(select_action_modal)
+	
+	path = FKModalPaths.EXPRESSION_EDITOR_MODAL
+	scene = load(path)
+	expression_modal = scene.instantiate()
+	add_child(expression_modal)
+	
+func _refresh_modal_cache():
+	_modals.clear()
+	for child in get_children():
+		if child is FKModalWindow:
+			_modals.append(child)
+	
+var _modals: Array[FKModalWindow] = []
+
+func _hide_modals():
+	for child in _modals:
+		child.visible = false
+	
+func _legitimize_modals():
+	for child in _modals:
+		child.legitimize()
 	
 func _toggle_subs(on: bool):
-	if on and not _is_subbed:
+	if on and !_is_subbed:
 		# For undo state on drag-and-drop reorder
 		blocks_container.before_block_moved.connect(_push_undo_state)
 		select_node_modal.node_selected.connect(_on_node_selected)
@@ -64,7 +146,7 @@ func _toggle_subs(on: bool):
 		select_action_modal.action_selected.connect(_on_action_selected)
 		select_condition_modal.condition_selected.connect(_on_condition_selected)
 		expression_modal.expressions_confirmed.connect(_on_expressions_confirmed)
-	elif not on and _is_subbed:
+	elif !on and _is_subbed:
 		blocks_container.before_block_moved.disconnect(_push_undo_state)
 		select_node_modal.node_selected.disconnect(_on_node_selected)
 		select_event_modal.event_selected.disconnect(_on_event_selected)
@@ -76,34 +158,27 @@ func _toggle_subs(on: bool):
 
 var _is_subbed := false
 
-func _setup_ui() -> void:
-	"""Initialize UI state."""
-	_show_empty_state()
-	
 func _show_empty_state() -> void:
 	"""Show empty state UI (no scene loaded)."""
 	empty_label.visible = true
 	add_event_btn.visible = false
 	
 func _exit_tree() -> void:
+	if is_editor_preview:
+		print("[FKMainEditor]: Exiting tree as editor preview. Instance id: " + str(get_instance_id()))
+		return
+	print("[FKMainEditor]: Exiting tree as legit instance. Instance id: " + str(get_instance_id()))
 	_toggle_subs(false)
 
 func set_editor_interface(interface: EditorInterface) -> void:
 	editor_interface = interface
 	# Pass to modals (deferred in case they're not ready yet)
-	if select_node_modal:
-		select_node_modal.set_editor_interface(interface)
-	if select_event_modal:
-		select_event_modal.set_editor_interface(interface)
-	if select_condition_modal:
-		select_condition_modal.set_editor_interface(interface)
-	if select_action_modal:
-		select_action_modal.set_editor_interface(interface)
-	if expression_modal:
-		expression_modal.set_editor_interface(interface)
-	else:
-		# If modal isn't ready yet, defer it
-		call_deferred("_set_expression_interface", interface)
+	select_node_modal.set_editor_interface(interface)
+	select_event_modal.set_editor_interface(interface)
+	select_condition_modal.set_editor_interface(interface)
+	select_action_modal.set_editor_interface(interface)
+	expression_modal.set_editor_interface(interface)
+	expression_modal.set_editor_interface(interface)
 
 func set_registry(reg: FKRegistry) -> void:
 	registry = reg
@@ -130,7 +205,8 @@ func _popup_centered_on_editor(popup: Window) -> void:
 	# Use editor_interface to get the actual main editor window
 	var editor_window: Window = null
 	if editor_interface:
-		editor_window = editor_interface.get_base_control().get_window()
+		var base_control := editor_interface.get_base_control()
+		editor_window = base_control.get_window()
 	
 	if not editor_window:
 		# Fallback to default behavior if window not available
@@ -325,22 +401,13 @@ func _undo() -> void:
 	if not undo_manager.can_undo() or _is_in_undo_redo:
 		return
 	_is_in_undo_redo = true
-	#print("[FKMainEditor]: Capturing units for undo")
 	var current_units := blocks_container.units
-	#print("[FKMainEditor]: Fetching prev state from undo manager")
 	var prev_state := undo_manager.undo(current_units)
 	var restored_units := ArrayUtils.get_fk_units_in(prev_state)
-	#print("[FKMainEditor]: Restored units after filter:")
-	for elem in restored_units:
-		print(elem.get_class() + ": " + str(elem))
-		if elem is FKGroup:
-			#print("[FKMainEditor]: It's a group")
-			pass
 	_restore_unit_uis(restored_units)
 	
 	_is_in_undo_redo = false
-	#print("[FKMainEditor]: About to save sheet after restoring units given by undo manager")
-	print("[FlowKit] Undo performed")
+	print("[FKMainEditor]: Undo performed")
 	
 var _is_in_undo_redo := false
 	
@@ -353,14 +420,12 @@ func _redo() -> void:
 
 	_restore_unit_uis(restored_units)
 	_is_in_undo_redo = false
-	print("[FlowKit] Redo performed")
+	print("[FKMainEditor]: Redo performed")
 
 func _restore_unit_uis(units: Array[FKUnit]) -> void:
 	blocks_container.clear_unit_nodes()
 
 	for unit in units:
-		#print("[FKMainEditor]: Current unit in _restore_unit_uis:")
-		#print(unit.get_class() + ": " + str(unit))
 		var node := _create_unit_ui(unit)
 		blocks_container.add_child(node)
 
@@ -369,13 +434,7 @@ func _restore_unit_uis(units: Array[FKUnit]) -> void:
 	else:
 		_show_empty_blocks_state()
 		
-	#print("[FKMainEditor]: blocks_container children after _restore_unit_uis:")
-	for elem in blocks_container.get_children():
-		#print(elem.get_class() + ": " + str(elem))
-		pass
 		
-
-
 func _create_unit_ui(unit: FKUnit) -> FKUnitUi:
 	var result: FKUnitUi = unit_ui_factory.unit_ui_from(unit)
 	if result:
@@ -472,10 +531,6 @@ func _find_parent_event_row(node: Control) -> FKEventRowUi:
 			return current
 		current = current.get_parent()
 	return null
-
-func _set_expression_interface(interface: EditorInterface) -> void:
-	if expression_modal:
-		expression_modal.set_editor_interface(interface)
 
 func undo(): _undo()
 func redo(): _redo()
@@ -630,10 +685,10 @@ func _save_sheet() -> FKEventSheet:
 	var err := sheet_io.save_sheet(current_scene_uid, sheet)
 	var result: FKEventSheet = null
 	if err == OK:
-		print("[FKMainEditor] ✓ Event sheet saved")
+		print("[FKMainEditor]: ✓ Event sheet saved")
 		result = sheet
 	else:
-		push_error("[FKMainEditor] Failed to save event sheet: ", err)
+		push_error("[FKMainEditor]: Failed to save event sheet: ", err)
 	
 	return result
 	
@@ -805,14 +860,14 @@ func _on_new_sheet() -> void:
 
 func _on_generate_providers() -> void:
 	if not generator:
-		print("[FlowKit] Generator not available")
+		print("[FKMainEditor]: Generator not available")
 		return
 	
-	print("[FlowKit] Starting provider generation...")
+	print("[FKMainEditor]: Starting provider generation...")
 	
 	var result = generator.generate_all()
 	
-	var message := "Generation complete!\n"
+	var message := "[FKMainEditor]: Generation complete!\n"
 	message += "Actions: %d\n" % result.actions
 	message += "Conditions: %d\n" % result.conditions
 	message += "Events: %d\n" % result.events
@@ -851,14 +906,14 @@ func _on_generate_providers() -> void:
 
 func _on_generate_manifest() -> void:
 	if not generator:
-		print("[FlowKit] Generator not available")
+		print("[FKMainEditor]: Generator not available")
 		return
 
-	print("[FlowKit] Generating optimized provider manifest for export...")
+	print("[FKMainEditor]: Generating optimized provider manifest for export...")
 
 	var result = generator.generate_manifest()
 
-	var message := "Optimized manifest generated!\n\n"
+	var message := "[FKMainEditor]: Optimized manifest generated!\n\n"
 	message += "Included providers (actively used):\n"
 	message += "  Actions:    %d\n" % result.actions
 	message += "  Conditions: %d\n" % result.conditions
@@ -1045,10 +1100,12 @@ func _start_add_workflow(block_type: String, target_row: Node = null) -> void:
 	_popup_centered_on_editor(select_node_modal)
 
 func _on_node_selected(node_path: String, node_class: String) -> void:
-	"""Node selected in workflow."""
+	"""
+	Node selected in workflow. This should execute when it's time to edit an FKUnit
+	through the editor.
+	"""
 	pending_node_path = node_path
 	select_node_modal.hide()
-	
 	match pending_block_type:
 		"event", "event_replace", "event_in_group":
 			select_event_modal.populate_events(node_path, node_class)
@@ -1072,7 +1129,6 @@ func _on_event_selected(node_path: String, event_id: String, inputs: Array) -> v
 	select_event_modal.hide()
 	
 	if inputs.size() > 0:
-		#print("[FKMainEditor] Populating inputs in on event selected")
 		expression_modal.populate_inputs(node_path, event_id, inputs)
 		_popup_centered_on_editor(expression_modal)
 	else:
@@ -1091,7 +1147,6 @@ func _on_condition_selected(node_path: String, condition_id: String, inputs: Arr
 	select_condition_modal.hide()
 	
 	if inputs.size() > 0:
-		#print("[FKMainEditor] Populating inputs in on condition selected")
 		expression_modal.populate_inputs(node_path, condition_id, inputs)
 		_popup_centered_on_editor(expression_modal)
 	else:
@@ -1108,12 +1163,10 @@ func _on_condition_selected(node_path: String, condition_id: String, inputs: Arr
 
 func _on_action_selected(node_path: String, action_id: String, inputs: Array) -> void:
 	"""Action type selected."""
-	#print("[FKMainEditor] Action selected")
 	pending_id = action_id
 	select_action_modal.hide()
 	
 	if inputs.size() > 0:
-		#print("[FKMainEditor] Populating inputs in on action selected")
 		expression_modal.populate_inputs(node_path, action_id, inputs)
 		_popup_centered_on_editor(expression_modal)
 	else:
@@ -1440,11 +1493,10 @@ func _on_row_edit(signal_row, bound_row: FKEventRowUi) -> void:
 		pending_node_path = str(data.target_node)
 		
 		# Open expression modal with current values
-		#print("[FKMainEditor] Populating inputs in on row edit")
 		expression_modal.populate_inputs(str(data.target_node), data.event_id, provider_inputs, data.inputs)
 		_popup_centered_on_editor(expression_modal)
 	else:
-		print("[FKMainEditor] Event has no inputs to edit")
+		print("[FKMainEditor]: Event has no inputs to edit")
 		pass
 
 func _on_row_add_condition(signal_row, bound_row: FKEventRowUi) -> void:
@@ -1615,11 +1667,10 @@ event_row: FKEventRowUi) -> void:
 		pending_block_type = "action_edit"
 		pending_id = act_data.action_id
 		pending_node_path = str(act_data.target_node)
-		#print("[FKMainEditor] Populating inputs in on branch action edit")
 		expression_modal.populate_inputs(str(act_data.target_node), act_data.action_id, provider_inputs, act_data.inputs)
 		_popup_centered_on_editor(expression_modal)
 	else:
-		print("[FKMainEditor] Action has no inputs to edit")
+		print("[FKMainEditor]: Action has no inputs to edit")
 
 func _finalize_branch_creation(inputs: Dictionary) -> void:
 	"""Create a condition-type branch and add it to the target's actions."""
@@ -1732,9 +1783,6 @@ func _update_branch_condition(expressions: Dictionary) -> void:
 
 func _finalize_branch_action_creation(inputs: Dictionary) -> void:
 	"""Add an action inside a branch."""
-	print("[FKMainEditor]: in _finalize_branch_action_creation. Inputs:")
-	print(str(inputs))
-	print("[FKMainEditor]: Pending target branch type: " + pending_target_branch.get_class())
 	_push_undo_state()
 
 	var data := FKActionUnit.new()
@@ -1769,7 +1817,6 @@ func _start_branch_workflow(branch_id: String, target_row) -> void:
 		pending_block_type = "branch_evaluation"
 		pending_target_row = target_row
 		if branch_inputs_def.size() > 0:
-			#print("[FKMainEditor] Populating inputs in start branch workflow")
 			expression_modal.populate_inputs("", branch_id, branch_inputs_def)
 			_popup_centered_on_editor(expression_modal)
 		else:
@@ -1864,11 +1911,10 @@ func _on_condition_edit_requested(condition_item: FKConditionUnitUi, bound_row) 
 		pending_block_type = "condition_edit"
 		pending_id = cond_data.condition_id
 		pending_node_path = str(cond_data.target_node)
-		#print("[FKMainEditor] Populating inputs in on condition edit requested")
 		expression_modal.populate_inputs(str(cond_data.target_node), cond_data.condition_id, provider_inputs, cond_data.inputs)
 		_popup_centered_on_editor(expression_modal)
 	else:
-		print("[FKMainEditor] Condition has no inputs to edit")
+		print("[FKMainEditor]: Condition has no inputs to edit")
 
 func _on_action_edit_requested(action_item: FKActionUnitUi, bound_row) -> void:
 	"""Handle double-click on action to edit its inputs."""
@@ -1883,8 +1929,6 @@ func _on_action_edit_requested(action_item: FKActionUnitUi, bound_row) -> void:
 			if provider.has_method("get_id") and provider.get_id() == act_data.action_id:
 				if provider is FKAction:
 					provider_inputs = provider.get_inputs()
-					#print("[FKMainEditor] Provider inputs found for provider type " + \
-					#provider.get_class() + ": " + str(provider_inputs))
 				break
 	
 	if provider_inputs.size() > 0:
@@ -1893,20 +1937,18 @@ func _on_action_edit_requested(action_item: FKActionUnitUi, bound_row) -> void:
 		pending_block_type = "action_edit"
 		pending_id = act_data.action_id
 		pending_node_path = str(act_data.target_node)
-		#print("[FKMainEditor] Populating inputs in on action edit requested. Provider inputs:\n" + str(provider_inputs))
 		var node_path := str(act_data.target_node)
 		expression_modal.populate_inputs(node_path, act_data.action_id, provider_inputs, \
 		act_data.inputs)
 		_popup_centered_on_editor(expression_modal)
 	else:
-		print("[FKMainEditor] Action has no inputs to edit")
+		print("[FKMainEditor]: Action has no inputs to edit")
 
 # === Drag and Drop Handlers ===
 
 func _on_condition_dropped(source_row: FKEventRowUi, condition_data: FKConditionUnit, 
 target_row: FKEventRowUi) -> void:
 	"""Handle condition dropped from one event row to another."""
-	print("[FKMainEditor] _on_condition_dropped")
 	if not source_row or not target_row or not condition_data:
 		return
 	
@@ -1929,7 +1971,6 @@ target_row: FKEventRowUi) -> void:
 
 func _on_action_dropped(source_row: FKEventRowUi, action_data: FKActionUnit, target_row: FKUnitUi) -> void:
 	"""Handle action dropped from one event row to another."""
-	print("[FKMainEditor] _on_action_dropped")
 	if not source_row or not target_row or not action_data:
 		return
 	

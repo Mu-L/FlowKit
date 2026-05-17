@@ -9,18 +9,6 @@
 
 [sub_resource type="Resource" id="Resource_1axor"]
 script = ExtResource("3_5poua")
-action_id = "Print Message"
-target_node = NodePath(".")
-inputs = {
-"Color": "",
-"Message": "",
-"color": "",
-"message": "\"This is a message printed with the default color.\""
-}
-block_type = "action"
-
-[sub_resource type="Resource" id="Resource_ju1rn"]
-script = ExtResource("3_5poua")
 action_id = "set_window_size"
 target_node = NodePath("System")
 inputs = {
@@ -29,12 +17,22 @@ inputs = {
 }
 block_type = "action"
 
-[sub_resource type="Resource" id="Resource_5poua"]
+[sub_resource type="Resource" id="Resource_ju1rn"]
 script = ExtResource("3_5poua")
 action_id = "set_window_mode"
 target_node = NodePath("System")
 inputs = {
 "Mode": "\"windowed\""
+}
+block_type = "action"
+
+[sub_resource type="Resource" id="Resource_5poua"]
+script = ExtResource("3_5poua")
+action_id = "Print Message"
+target_node = NodePath(".")
+inputs = {
+"Color": "",
+"Message": "\"This is a message printed with the default color.\""
 }
 block_type = "action"
 
@@ -80,7 +78,7 @@ block_type = "action"
 
 [sub_resource type="Resource" id="Resource_5spa6"]
 script = ExtResource("2_ju1rn")
-block_id = "event_1775232152_1936602696"
+block_id = "event_1778579360_2640092096"
 event_id = "on_ready"
 target_node = NodePath(".")
 actions = Array[ExtResource("3_5poua")]([SubResource("Resource_1axor"), SubResource("Resource_ju1rn"), SubResource("Resource_5poua"), SubResource("Resource_ayedq"), SubResource("Resource_np8on"), SubResource("Resource_v1ajb"), SubResource("Resource_e46t1")])

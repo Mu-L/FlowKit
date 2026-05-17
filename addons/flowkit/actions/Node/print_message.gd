@@ -19,7 +19,8 @@ func get_inputs() -> Array[FKActionInput]:
 static var _color_input: FKStringActionInput:
 	get:
 		return FKStringActionInput.new("Color",
-		"Decides what BBCode color the message is wrapped in. Default: white.")
+		"Decides what BBCode color the message is wrapped in. Default: white.",
+		"white")
 
 static var _message_input: FKStringActionInput:
 	get:

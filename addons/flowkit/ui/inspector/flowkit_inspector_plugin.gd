@@ -1,5 +1,6 @@
 @tool
 extends EditorInspectorPlugin
+class_name FKEditorInspectorPlugin
 
 ## FlowKit Custom Inspector Plugin
 ## Adds FlowKit section to all nodes in the inspector

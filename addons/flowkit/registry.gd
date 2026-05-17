@@ -16,7 +16,7 @@ var branch_providers: Array = []
 func load_all() -> void:
 	# Try to load from manifest first (required for exported builds)
 	if _load_from_manifest():
-		print("[FlowKit Registry] Loaded providers from manifest: %d actions, %d conditions, %d events, %d behaviors, %d branches" % [
+		print("[FKRegistry] Loaded providers from manifest: %d actions, %d conditions, %d events, %d behaviors, %d branches" % [
 			action_providers.size(),
 			condition_providers.size(),
 			event_providers.size(),
@@ -34,7 +34,7 @@ func load_all() -> void:
 		_load_folder("behaviors", behavior_providers)
 		_load_folder("branches", branch_providers)
 		
-		print("[FlowKit Registry] Loaded providers from directories: %d actions, %d conditions, %d events, %d behaviors, %d branches" % [
+		print("[FKRegistry]: Loaded providers from directories: %d actions, %d conditions, %d events, %d behaviors, %d branches" % [
 			action_providers.size(),
 			condition_providers.size(),
 			event_providers.size(),
@@ -42,7 +42,7 @@ func load_all() -> void:
 			branch_providers.size()
 		])
 	else:
-		push_error("[FlowKit Registry] No provider manifest found and directory scanning is not available in exported builds. Generate the manifest in the editor.")
+		push_error("[FKRegistry]: No provider manifest found and directory scanning is not available in exported builds. Generate the manifest in the editor.")
 
 func load_providers() -> void:
 	# Alias for load_all() for backward compatibility

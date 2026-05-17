@@ -32,7 +32,7 @@ func generate_all() -> Dictionary:
 	var node_types: Dictionary = {}
 	_collect_node_types(current_scene, node_types)
 	
-	print("[FlowKit Generator] Found ", node_types.size(), " unique node types")
+	print("[FKGenerator]: Found ", node_types.size(), " unique node types")
 	
 	# Generate providers for each node type
 	for node_type in node_types.keys():
@@ -671,9 +671,9 @@ func _write_file(path: String, content: String) -> void:
 	if file:
 		file.store_string(content)
 		file.close()
-		print("[FlowKit Generator] Created: ", path)
+		print("[FKGenerator]: Created: ", path)
 	else:
-		push_error("[FlowKit Generator] Failed to write: " + path)
+		push_error("[FKGenerator]: Failed to write: " + path)
 
 # ============================================================================
 # MANIFEST GENERATION
@@ -702,7 +702,7 @@ func generate_manifest() -> Dictionary:
 
 	# Step 1: Scan all event sheets and scenes to find actively used provider IDs
 	var used_ids: Dictionary = _scan_used_provider_ids()
-	print("[FlowKit Generator] Used provider IDs:")
+	print("[FKGenerator]: Used provider IDs:")
 	print("  Actions:    ", used_ids.action_ids)
 	print("  Conditions: ", used_ids.condition_ids)
 	print("  Events:     ", used_ids.event_ids)
@@ -762,10 +762,10 @@ func generate_manifest() -> Dictionary:
 	var error = ResourceSaver.save(manifest, MANIFEST_PATH)
 	if error != OK:
 		result.errors.append("Failed to save manifest: " + str(error))
-		push_error("[FlowKit Generator] Failed to save manifest: " + str(error))
+		push_error("[FKGenerator]: Failed to save manifest: " + str(error))
 	else:
-		print("[FlowKit Generator] Manifest saved to: ", MANIFEST_PATH)
-		print("[FlowKit Generator] Included: %d / %d providers (excluded %d unused)" % [
+		print("[FKGenerator]: Manifest saved to: ", MANIFEST_PATH)
+		print("[FKGenerator]: Included: %d / %d providers (excluded %d unused)" % [
 			result.total_included, result.total_available, result.total_excluded
 		])
 

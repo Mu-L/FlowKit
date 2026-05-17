@@ -8,3 +8,5 @@ const ACTION_ITEM_SCENE := preload("res://addons/flowkit/ui/workspace/action_uni
 
 const BRANCH_ITEM_SCENE_PATH := "res://addons/flowkit/ui/workspace/branch_unit_ui.tscn"
 const BRANCH_ITEM_SCENE := preload(BRANCH_ITEM_SCENE_PATH)
+
+const PATH_TO_EVENTS_FOLDER := "res://addons/flowkit/events"

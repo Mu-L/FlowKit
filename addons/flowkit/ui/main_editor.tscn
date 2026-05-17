@@ -3,11 +3,6 @@
 [ext_resource type="Script" uid="uid://bwh2bhg4rvhcx" path="res://addons/flowkit/ui/main_editor.gd" id="1_gkvd7"]
 [ext_resource type="Script" uid="uid://dg46wtoo70ju2" path="res://addons/flowkit/ui/menu_bar.gd" id="2_cq0bt"]
 [ext_resource type="Script" uid="uid://d3kkt2ew5wf7j" path="res://addons/flowkit/ui/blocks_container_ui.gd" id="3_xf0se"]
-[ext_resource type="PackedScene" uid="uid://buxqkjavs51qe" path="res://addons/flowkit/ui/modals/select_node_modal.tscn" id="4_t4gjw"]
-[ext_resource type="PackedScene" uid="uid://crj5y8vh2m3qi" path="res://addons/flowkit/ui/modals/select_event_modal.tscn" id="5_dqxt5"]
-[ext_resource type="PackedScene" uid="uid://c7j20avh3m4rj" path="res://addons/flowkit/ui/modals/select_action_modal.tscn" id="6_7k5ms"]
-[ext_resource type="PackedScene" uid="uid://cam4a1xj6n7ql" path="res://addons/flowkit/ui/modals/select_condition_modal.tscn" id="7_pcxw6"]
-[ext_resource type="PackedScene" uid="uid://d58fx0alhbxs" path="res://addons/flowkit/ui/modals/expression_editor.tscn" id="8_8w7jk"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.12, 0.12, 0.15, 1)
@@ -24,7 +19,7 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-[node name="Control" type="Control" unique_id=945005444 node_paths=PackedStringArray("scroll_container", "blocks_container", "empty_label", "add_event_btn", "menu_bar", "select_node_modal", "select_event_modal", "select_condition_modal", "select_action_modal", "expression_modal")]
+[node name="Control" type="Control" unique_id=945005444 node_paths=PackedStringArray("scroll_container", "blocks_container", "empty_label", "add_event_btn", "menu_bar")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -39,11 +34,6 @@ blocks_container = NodePath("OuterVBox/ScrollContainer/MarginContainer/BlocksCon
 empty_label = NodePath("OuterVBox/ScrollContainer/MarginContainer/BlocksContainer/EmptyLabel")
 add_event_btn = NodePath("OuterVBox/BottomMargin/ButtonContainer/AddEventButton")
 menu_bar = NodePath("OuterVBox/TopMargin/TopBar/MenuBar")
-select_node_modal = NodePath("SelectNodeModal")
-select_event_modal = NodePath("SelectEventModal")
-select_condition_modal = NodePath("SelectConditionModal")
-select_action_modal = NodePath("SelectActionModal")
-expression_modal = NodePath("ExpressionModal")
 
 [node name="Background" type="Panel" parent="." unique_id=1222721060]
 layout_mode = 1
@@ -168,17 +158,6 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button")
 text = "➕ Add Event"
-
-[node name="SelectNodeModal" parent="." unique_id=2030002633 instance=ExtResource("4_t4gjw")]
-
-[node name="SelectEventModal" parent="." unique_id=2026572997 instance=ExtResource("5_dqxt5")]
-visible = false
-
-[node name="SelectActionModal" parent="." unique_id=374370571 instance=ExtResource("6_7k5ms")]
-
-[node name="SelectConditionModal" parent="." unique_id=184117392 instance=ExtResource("7_pcxw6")]
-
-[node name="ExpressionModal" parent="." unique_id=996764360 instance=ExtResource("8_8w7jk")]
 
 [connection signal="generate_manifest" from="OuterVBox/TopMargin/TopBar/MenuBar" to="." method="_on_generate_manifest"]
 [connection signal="generate_providers" from="OuterVBox/TopMargin/TopBar/MenuBar" to="." method="_on_generate_providers"]

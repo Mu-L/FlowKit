@@ -1,42 +1,55 @@
 @tool
-extends PopupPanel
+extends FKModalWindow
 class_name FKSelectNodeModal
 
 signal node_selected(node_path: String, node_class: String)
 
-var editor_interface: EditorInterface
 var available_events: Array = []
 
-@onready var search_box := $VBoxContainer/SearchBox
-@onready var item_list := $VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList
-@onready var recent_item_list := $VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList
+@export var search_box: LineEdit  
+@export var item_list: ItemList
+@export var recent_item_list: ItemList
 
 var _all_items_cache: Array = []
-var _recent_items_manager: Variant = null
 
-func _ready() -> void:
-	if search_box:
-		search_box.text_changed.connect(_on_search_text_changed)
+func _enter_tree() -> void:
+	super._enter_tree()
+	
+	if is_editor_preview:
+		return
 		
-	if item_list:
+	_recent_items_manager = FKRecentItemsManagerUi.new()
+	
+var _recent_items_manager: Variant = null
+	
+func _toggle_subs(should_sub: bool):
+	if should_sub and not _is_subbed:
+		search_box.text_changed.connect(_on_search_text_changed)
 		item_list.item_activated.connect(_on_item_activated)
 		item_list.item_selected.connect(_on_item_selected)
-	
-	if recent_item_list:
 		recent_item_list.item_activated.connect(_on_recent_item_activated)
-	
-	# Load recent items manager
-	_recent_items_manager = load("res://addons/flowkit/ui/modals/recent_items_manager.gd").new()
-	
+	elif _is_subbed and not should_sub:
+		search_box.text_changed.disconnect(_on_search_text_changed)
+		item_list.item_activated.disconnect(_on_item_activated)
+		item_list.item_selected.disconnect(_on_item_selected)
+		recent_item_list.item_activated.disconnect(_on_recent_item_activated)
+	else:
+		return
+		
+	_is_subbed = should_sub
+
+func _ready() -> void:
+	if is_editor_preview:
+		return
 	# Load all available events to check compatibility
-	_load_available_events()
+	_load_available_event_scripts()
 	_populate_recent_list()
 
-func _load_available_events() -> void:
+func _load_available_event_scripts() -> void:
 	"""Load all event scripts from the events folder."""
 	available_events.clear()
-	var events_path: String = "res://addons/flowkit/events"
-	_scan_directory_recursive(events_path)
+	var path := FKEditorGlobals.PATH_TO_EVENTS_FOLDER
+	_scan_directory_recursive(path)
 
 func _scan_directory_recursive(path: String) -> void:
 	"""Recursively scan directories for event scripts."""
@@ -49,11 +62,12 @@ func _scan_directory_recursive(path: String) -> void:
 	
 	while file_name != "":
 		var full_path: String = path + "/" + file_name
+		var is_subdir: bool = dir.current_is_dir() and not file_name.begins_with(".")
+		var is_event_script: bool = file_name.ends_with(".gd") and not file_name.ends_with(".gd.uid")
 		
-		if dir.current_is_dir() and not file_name.begins_with("."):
-			# Recursively scan subdirectory
+		if is_subdir:
 			_scan_directory_recursive(full_path)
-		elif file_name.ends_with(".gd") and not file_name.ends_with(".gd.uid"):
+		elif is_event_script:
 			var event_script: Variant = load(full_path)
 			if event_script:
 				var event_instance: Variant = event_script.new()
@@ -63,13 +77,26 @@ func _scan_directory_recursive(path: String) -> void:
 	
 	dir.list_dir_end()
 
-func set_editor_interface(interface: EditorInterface):
-	editor_interface = interface
-
-func set_registry(reg: FKRegistry):
-	registry = reg
+func _populate_recent_list() -> void:
+	"""Populate the recent items list."""
+	if not _recent_items_manager:
+		return
 	
-var registry: FKRegistry
+	recent_item_list.clear()
+	
+	if _recent_items_manager.recent_nodes.is_empty():
+		recent_item_list.add_item("(No recent items)")
+		recent_item_list.set_item_disabled(0, true)
+		return
+	
+	for recent_node in _recent_items_manager.recent_nodes:
+		var display_name = recent_node["path"]
+		if recent_node["path"] == "System":
+			display_name = "System"
+		
+		recent_item_list.add_item(display_name)
+		var index = recent_item_list.item_count - 1
+		recent_item_list.set_item_metadata(index, recent_node)
 
 func populate_from_scene(scene_root: Node) -> void:
 	if not item_list:
@@ -79,8 +106,8 @@ func populate_from_scene(scene_root: Node) -> void:
 	
 	# Add System option at the top
 	var system_icon = null
-	if editor_interface:
-		system_icon = editor_interface.get_base_control().get_theme_icon("Node", "EditorIcons")
+	if _editor_interface:
+		system_icon = _editor_interface.get_base_control().get_theme_icon("Node", "EditorIcons")
 		
 	_all_items_cache.append({
 		"display_name": "System",
@@ -108,8 +135,9 @@ func _add_node_recursive(node: Node, scene_root: Node, depth: int) -> void:
 	var has_compatible_event = _has_compatible_event(node_class)
 	
 	var icon = null
-	if editor_interface:
-		icon = editor_interface.get_base_control().get_theme_icon(node.get_class(), "EditorIcons")
+	if _editor_interface:
+		var base_control := _editor_interface.get_base_control()
+		icon = base_control.get_theme_icon(node_class, "EditorIcons")
 	
 	_all_items_cache.append({
 		"display_name": node_name,
@@ -194,7 +222,7 @@ func _on_item_activated(index: int) -> void:
 	
 	# Handle System node
 	if node_path_str == "System":
-		print("Node selected: System (System)")
+		print("[FKSelectNodeModal]: Node selected: System (System)")
 		_recent_items_manager.add_recent_node("System", "System")
 		node_selected.emit("System", "System")
 		hide()
@@ -203,17 +231,17 @@ func _on_item_activated(index: int) -> void:
 	var node = _get_node_from_path(node_path_str)
 	if node:
 		var node_class = node.get_class()
-		print("Node selected: ", node_path_str, " (", node_class, ")")
+		print("[FKSelectNodeModal]: Node selected: ", node_path_str, " (", node_class, ")")
 		_recent_items_manager.add_recent_node(node_path_str, node_class)
 		node_selected.emit(node_path_str, node_class)
 		hide()
 
 func _get_node_from_path(node_path_str: String) -> Node:
 	"""Get the actual node from the scene by path."""
-	if not editor_interface:
+	if not _editor_interface:
 		return null
 	
-	var current_scene = editor_interface.get_edited_scene_root()
+	var current_scene = _editor_interface.get_edited_scene_root()
 	if not current_scene:
 		return null
 	
@@ -230,27 +258,6 @@ func _on_popup_hide() -> void:
 	if search_box:
 		search_box.clear()
 
-func _populate_recent_list() -> void:
-	"""Populate the recent items list."""
-	if not recent_item_list or not _recent_items_manager:
-		return
-	
-	recent_item_list.clear()
-	
-	if _recent_items_manager.recent_nodes.is_empty():
-		recent_item_list.add_item("(No recent items)")
-		recent_item_list.set_item_disabled(0, true)
-		return
-	
-	for recent_node in _recent_items_manager.recent_nodes:
-		var display_name = recent_node["path"]
-		if recent_node["path"] == "System":
-			display_name = "System"
-		
-		recent_item_list.add_item(display_name)
-		var index = recent_item_list.item_count - 1
-		recent_item_list.set_item_metadata(index, recent_node)
-
 func _on_recent_item_activated(index: int) -> void:
 	"""Handle selection from recent items."""
 	if recent_item_list.is_item_disabled(index):
@@ -260,6 +267,6 @@ func _on_recent_item_activated(index: int) -> void:
 	var node_path_str = recent_node["path"]
 	var node_class = recent_node["class"]
 	
-	print("Recent node selected: ", node_path_str, " (", node_class, ")")
+	print("[FKSelectNodeModal]: Recent node selected: ", node_path_str, " (", node_class, ")")
 	node_selected.emit(node_path_str, node_class)
 	hide()

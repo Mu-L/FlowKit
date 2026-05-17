@@ -33,10 +33,10 @@ func _get_raw(dict: Dictionary) -> Variant:
 	var result
 	if dict.has(name):
 		result = dict[name]
-		
-	var lower := name.to_lower()
-	if dict.has(lower):
-		result = dict[lower]
+	else:
+		var lower := name.to_lower()
+		if dict.has(lower):
+			result = dict[lower]
 	
 	if _is_valid(result):
 		return result
