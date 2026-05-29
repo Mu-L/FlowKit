@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://c7j20avh3m4rj"]
+
+[ext_resource type="Script" uid="uid://ckts6rjlmh4hr" path="res://addons/flowkit/editor/modals/select_action_modal.gd" id="1_action"]
+[ext_resource type="StyleBox" uid="uid://coc5tirv43fp" path="res://addons/flowkit/editor/styles/modal_desc_panel_style.tres" id="2_3qifl"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fkpqk"]
+bg_color = Color(0.2, 0.2, 0.2, 0.8)
+
+[node name="SelectAction" type="PopupPanel" unique_id=1297607050 node_paths=PackedStringArray("search_box", "item_list", "description_label", "recent_item_list", "desc_panel")]
+oversampling_override = 1.0
+title = "Select an Action"
+size = Vector2i(900, 600)
+visible = true
+unresizable = false
+borderless = false
+keep_title_visible = true
+script = ExtResource("1_action")
+search_box = NodePath("VBoxContainer/SearchBox")
+item_list = NodePath("VBoxContainer/HSplitContainer/MainPanel/MainVBox/ItemList")
+description_label = NodePath("VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/ScrollContainer/DescriptionLabel")
+recent_item_list = NodePath("VBoxContainer/HSplitContainer/RecentPanel/RecentVBox/RecentItemList")
+desc_panel = NodePath("VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel")
+desc_panel_style = ExtResource("2_3qifl")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1385009584]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SearchBox" type="LineEdit" parent="VBoxContainer" unique_id=879787418]
+layout_mode = 2
+placeholder_text = "Search..."
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer" unique_id=1852524297]
+layout_mode = 2
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(450)
+split_offset = 450
+
+[node name="RecentPanel" type="Panel" parent="VBoxContainer/HSplitContainer" unique_id=2121936009]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+
+[node name="RecentVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/RecentPanel" unique_id=1445886196]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RecentLabel" type="Label" parent="VBoxContainer/HSplitContainer/RecentPanel/RecentVBox" unique_id=1115850279]
+layout_mode = 2
+text = "Recent"
+
+[node name="RecentItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/RecentPanel/RecentVBox" unique_id=1495142577]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MainPanel" type="Panel" parent="VBoxContainer/HSplitContainer" unique_id=1132804728]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MainVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/MainPanel" unique_id=1107707669]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AllLabel" type="Label" parent="VBoxContainer/HSplitContainer/MainPanel/MainVBox" unique_id=1932058360]
+layout_mode = 2
+text = "All Actions"
+
+[node name="ItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/MainPanel/MainVBox" unique_id=576879617]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DescriptionPanel" type="Panel" parent="VBoxContainer/HSplitContainer/MainPanel/MainVBox" unique_id=766773455]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_fkpqk")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel" unique_id=1416222096]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 4.0
+offset_right = -8.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DescriptionLabel" type="Label" parent="VBoxContainer/HSplitContainer/MainPanel/MainVBox/DescriptionPanel/ScrollContainer" unique_id=1743695977]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3

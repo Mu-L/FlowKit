@@ -1,0 +1,151 @@
+[gd_scene format=3 uid="uid://d58fx0alhbxs"]
+
+[ext_resource type="Script" uid="uid://hyumo0w6ukas" path="res://addons/flowkit/editor/modals/expression_editor_modal.gd" id="1_expr"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+bg_color = Color(0.2, 0.2, 0.2, 0.5)
+expand_margin_left = 4.0
+expand_margin_top = 4.0
+expand_margin_right = 4.0
+expand_margin_bottom = 4.0
+
+[node name="ExpressionEditor" type="PopupPanel" unique_id=1148081216 node_paths=PackedStringArray("param_label", "expression_input", "description_label", "description_panel", "node_tree", "item_list", "prev_button", "next_button", "confirm_button")]
+oversampling_override = 1.0
+title = "Expression Editor"
+position = Vector2i(0, 36)
+size = Vector2i(800, 600)
+visible = true
+unresizable = false
+borderless = false
+keep_title_visible = true
+script = ExtResource("1_expr")
+param_label = NodePath("MarginContainer/VBoxContainer/TopContainer/ParamLabel")
+expression_input = NodePath("MarginContainer/VBoxContainer/TopContainer/ExpressionInput")
+description_label = NodePath("MarginContainer/VBoxContainer/TopContainer/DescriptionPanel/DescriptionMargin/DescriptionLabel")
+description_panel = NodePath("MarginContainer/VBoxContainer/TopContainer/DescriptionPanel")
+node_tree = NodePath("MarginContainer/VBoxContainer/MainContainer/LeftPanel/NodeTree")
+item_list = NodePath("MarginContainer/VBoxContainer/MainContainer/RightPanel/ItemList")
+prev_button = NodePath("MarginContainer/VBoxContainer/ButtonContainer/PrevButton")
+next_button = NodePath("MarginContainer/VBoxContainer/ButtonContainer/NextButton")
+confirm_button = NodePath("MarginContainer/VBoxContainer/ButtonContainer/ConfirmButton")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1386342634]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=598815693]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="MarginContainer/VBoxContainer" unique_id=709952430]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Expression Editor"
+
+[node name="TopContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=326487293]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ParamLabel" type="Label" parent="MarginContainer/VBoxContainer/TopContainer" unique_id=672394208]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Parameter (type)"
+
+[node name="ExpressionInput" type="LineEdit" parent="MarginContainer/VBoxContainer/TopContainer" unique_id=1133326790]
+layout_mode = 2
+placeholder_text = "Click items below to build your expression..."
+
+[node name="DescriptionPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer/TopContainer" unique_id=1578924881]
+layout_mode = 2
+size_flags_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1")
+
+[node name="DescriptionMargin" type="MarginContainer" parent="MarginContainer/VBoxContainer/TopContainer/DescriptionPanel" unique_id=1808981109]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="DescriptionLabel" type="Label" parent="MarginContainer/VBoxContainer/TopContainer/DescriptionPanel/DescriptionMargin" unique_id=661347453]
+modulate = Color(0.8, 0.8, 0.8, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text_overrun_behavior = 3
+
+[node name="HelpLabel" type="Label" parent="MarginContainer/VBoxContainer/TopContainer" unique_id=57317091]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "💡 Click items to insert them at cursor position. Use categories to browse available values."
+
+[node name="MainContainer" type="HSplitContainer" parent="MarginContainer/VBoxContainer" unique_id=1383817831]
+layout_mode = 2
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(200)
+split_offset = 200
+
+[node name="LeftPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer/MainContainer" unique_id=669992564]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="NodeLabel" type="Label" parent="MarginContainer/VBoxContainer/MainContainer/LeftPanel" unique_id=217103557]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Scene Nodes"
+
+[node name="NodeTree" type="Tree" parent="MarginContainer/VBoxContainer/MainContainer/LeftPanel" unique_id=1382178054]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RightPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer/MainContainer" unique_id=377121051]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+theme_override_constants/separation = 8
+
+[node name="ItemLabel" type="Label" parent="MarginContainer/VBoxContainer/MainContainer/RightPanel" unique_id=1958617781]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Values"
+
+[node name="ItemList" type="ItemList" parent="MarginContainer/VBoxContainer/MainContainer/RightPanel" unique_id=1414080068]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ButtonContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=1343805221]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="CancelButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer" unique_id=853219538]
+layout_mode = 2
+text = "Cancel"
+
+[node name="PrevButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer" unique_id=1605524262]
+layout_mode = 2
+text = "← Previous"
+
+[node name="NextButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer" unique_id=1581601247]
+layout_mode = 2
+text = "Next →"
+
+[node name="ConfirmButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonContainer" unique_id=799065093]
+layout_mode = 2
+text = "Confirm"
+
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ButtonContainer/CancelButton" to="." method="_on_cancel_button_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ButtonContainer/PrevButton" to="." method="_on_prev_button_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ButtonContainer/NextButton" to="." method="_on_next_button_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ButtonContainer/ConfirmButton" to="." method="_on_confirm_button_pressed"]

@@ -1,0 +1,163 @@
+[gd_scene format=3 uid="uid://ciskc36xxy0e2"]
+
+[ext_resource type="Script" uid="uid://d3np8thjqdpfb" path="res://addons/flowkit/editor/Ui/fkUnits/event_row_ui.gd" id="1_eventrow"]
+[ext_resource type="Script" uid="uid://mop12yce25n1" path="res://addons/flowkit/editor/Ui/workspace/drop_zone_ui.gd" id="2_dropzone"]
+[ext_resource type="StyleBox" uid="uid://cg02h3tr6m3th" path="res://addons/flowkit/editor/styles/event_row_ui_normal_style.tres" id="2_mjvbo"]
+[ext_resource type="StyleBox" uid="uid://cdduiwjwkh1b" path="res://addons/flowkit/editor/styles/event_row_ui_selected_style.tres" id="3_33qn0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_event_header"]
+bg_color = Color(0.18, 0.22, 0.28, 1)
+border_width_bottom = 1
+border_color = Color(0.25, 0.27, 0.32, 1)
+corner_radius_top_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_conditions"]
+bg_color = Color(0.12, 0.13, 0.16, 1)
+border_width_right = 1
+border_color = Color(0.25, 0.27, 0.32, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_actions"]
+bg_color = Color(0.13, 0.14, 0.17, 1)
+
+[node name="EventRow" type="MarginContainer" unique_id=132421565 node_paths=PackedStringArray("panel", "context_menu", "conditions_container", "actions_container", "event_header_label", "add_condition_label", "add_action_label", "condition_drop_zone", "action_drop_zone")]
+custom_minimum_size = Vector2(0, 60)
+mouse_filter = 0
+theme_override_constants/margin_bottom = 2
+script = ExtResource("1_eventrow")
+panel = NodePath("Panel")
+context_menu = NodePath("ContextMenu")
+conditions_container = NodePath("Panel/HBox/ConditionsColumn/ConditionsPanel/ConditionsMargin/ConditionsContainer")
+actions_container = NodePath("Panel/HBox/ActionsColumn/ActionsPanel/ActionsMargin/ActionsContainer")
+event_header_label = NodePath("Panel/HBox/ConditionsColumn/EventHeader/MarginContainer/EventLabel")
+add_condition_label = NodePath("Panel/HBox/ConditionsColumn/ConditionDropZone/AddConditionLabel")
+add_action_label = NodePath("Panel/HBox/ActionsColumn/ActionDropZone/AddActionLabel")
+condition_drop_zone = NodePath("Panel/HBox/ConditionsColumn/ConditionDropZone")
+action_drop_zone = NodePath("Panel/HBox/ActionsColumn/ActionDropZone")
+normal_stylebox = ExtResource("2_mjvbo")
+selected_stylebox = ExtResource("3_33qn0")
+
+[node name="Panel" type="PanelContainer" parent="." unique_id=853104603]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = ExtResource("2_mjvbo")
+
+[node name="HBox" type="HBoxContainer" parent="Panel" unique_id=2065287931]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="ConditionsColumn" type="VBoxContainer" parent="Panel/HBox" unique_id=1148917877]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="EventHeader" type="PanelContainer" parent="Panel/HBox/ConditionsColumn" unique_id=1540849777]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_event_header")
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel/HBox/ConditionsColumn/EventHeader" unique_id=150134385]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 6
+
+[node name="EventLabel" type="Label" parent="Panel/HBox/ConditionsColumn/EventHeader/MarginContainer" unique_id=2092118304]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.75, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚡ Event"
+
+[node name="ConditionsPanel" type="PanelContainer" parent="Panel/HBox/ConditionsColumn" unique_id=193954794]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_conditions")
+
+[node name="ConditionsMargin" type="MarginContainer" parent="Panel/HBox/ConditionsColumn/ConditionsPanel" unique_id=428021465]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="ConditionsContainer" type="VBoxContainer" parent="Panel/HBox/ConditionsColumn/ConditionsPanel/ConditionsMargin" unique_id=398717590]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="ConditionDropZone" type="MarginContainer" parent="Panel/HBox/ConditionsColumn" unique_id=322908351]
+layout_mode = 2
+mouse_filter = 0
+script = ExtResource("2_dropzone")
+accept_type = 5
+
+[node name="AddConditionLabel" type="Label" parent="Panel/HBox/ConditionsColumn/ConditionDropZone" unique_id=906333729]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.5, 0.55, 0.6, 1)
+theme_override_font_sizes/font_size = 11
+text = "Add condition"
+
+[node name="VSeparator" type="VSeparator" parent="Panel/HBox" unique_id=1630659284]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="ActionsColumn" type="VBoxContainer" parent="Panel/HBox" unique_id=1250856488]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="ActionsPanel" type="PanelContainer" parent="Panel/HBox/ActionsColumn" unique_id=1835148446]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_actions")
+
+[node name="ActionsMargin" type="MarginContainer" parent="Panel/HBox/ActionsColumn/ActionsPanel" unique_id=649031800]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="ActionsContainer" type="VBoxContainer" parent="Panel/HBox/ActionsColumn/ActionsPanel/ActionsMargin" unique_id=1772324905]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="ActionDropZone" type="MarginContainer" parent="Panel/HBox/ActionsColumn" unique_id=1033156694]
+layout_mode = 2
+mouse_filter = 0
+script = ExtResource("2_dropzone")
+accept_type = 2
+
+[node name="AddActionLabel" type="Label" parent="Panel/HBox/ActionsColumn/ActionDropZone" unique_id=1602909442]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.5, 0.55, 0.6, 1)
+theme_override_font_sizes/font_size = 11
+text = "Add..."
+
+[node name="ContextMenu" type="PopupMenu" parent="." unique_id=1510959905]
+size = Vector2i(200, 100)
+item_count = 4
+item_0/text = "Add Event Below"
+item_0/id = 0
+item_1/text = "Replace Event"
+item_1/id = 1
+item_2/text = "Edit Event"
+item_2/id = 2
+item_3/text = "Delete Event"
+item_3/id = 3

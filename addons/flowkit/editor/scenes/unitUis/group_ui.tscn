@@ -1,0 +1,86 @@
+[gd_scene format=3 uid="uid://dyp2evghudgkx"]
+
+[ext_resource type="Script" path="res://addons/flowkit/editor/Ui/fkUnits/group_ui.gd" id="1_apg7p"]
+[ext_resource type="StyleBox" uid="uid://bpc63etvlmjy3" path="res://addons/flowkit/editor/styles/group_ui_normal_style.tres" id="2_6elah"]
+[ext_resource type="StyleBox" uid="uid://csobmdpfisv8n" path="res://addons/flowkit/editor/styles/group_ui_selected_style.tres" id="3_yw6cv"]
+[ext_resource type="Script" uid="uid://cb84dk26fefj0" path="res://addons/flowkit/editor/Ui/workspace/group_children_container.gd" id="4_f6tk7"]
+
+[node name="Group" type="MarginContainer" unique_id=1547836185 node_paths=PackedStringArray("panel", "title_edit", "children_container", "context_menu", "header", "children_margin", "collapse_btn", "title_label", "drop_hint")]
+custom_minimum_size = Vector2(0, 60)
+mouse_filter = 0
+theme_override_constants/margin_bottom = 2
+script = ExtResource("1_apg7p")
+panel = NodePath("Panel")
+title_edit = NodePath("Panel/VBox/Header/TitleEdit")
+children_container = NodePath("Panel/VBox/ChildrenMargin/ChildrenContainer")
+context_menu = NodePath("ContextMenu")
+header = NodePath("Panel/VBox/Header")
+children_margin = NodePath("Panel/VBox/ChildrenMargin")
+collapse_btn = NodePath("Panel/VBox/Header/CollapseButton")
+title_label = NodePath("Panel/VBox/Header/TitleLabel")
+drop_hint = NodePath("Panel/VBox/ChildrenMargin/ChildrenContainer/DropHint")
+normal_stylebox = ExtResource("2_6elah")
+selected_stylebox = ExtResource("3_yw6cv")
+
+[node name="Panel" type="PanelContainer" parent="." unique_id=1391421669]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = ExtResource("2_6elah")
+
+[node name="VBox" type="VBoxContainer" parent="Panel" unique_id=1038594179]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox" unique_id=1686021525]
+layout_mode = 2
+mouse_filter = 0
+theme_override_constants/separation = 8
+
+[node name="CollapseButton" type="Label" parent="Panel/VBox/Header" unique_id=529057600]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+text = "▼"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Panel/VBox/Header" unique_id=1362412689]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.85, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "Group"
+
+[node name="TitleEdit" type="LineEdit" parent="Panel/VBox/Header" unique_id=511764968]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "Group"
+
+[node name="ChildrenMargin" type="MarginContainer" parent="Panel/VBox" unique_id=1378120681]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="ChildrenContainer" type="VBoxContainer" parent="Panel/VBox/ChildrenMargin" unique_id=1996020760]
+layout_mode = 2
+mouse_filter = 0
+theme_override_constants/separation = 2
+script = ExtResource("4_f6tk7")
+
+[node name="DropHint" type="Label" parent="Panel/VBox/ChildrenMargin/ChildrenContainer" unique_id=1312149252]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.6, 0.7, 0.6)
+theme_override_font_sizes/font_size = 12
+text = "Drag events here..."
+horizontal_alignment = 1
+
+[node name="ContextMenu" type="PopupMenu" parent="." unique_id=438576384]
