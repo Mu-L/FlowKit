@@ -27,7 +27,7 @@ func _validate_block(to_set: FKUnit) -> bool:
 func get_event() -> FKEventBlock:
 	return _block as FKEventBlock
 
-func _on_block_changed() -> void:
+func _on_contents_changed(node: FKUnitUi) -> void:
 	update_display()
 
 # ---------------------------------------------------------

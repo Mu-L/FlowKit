@@ -2,10 +2,6 @@
 extends FKUnitUi
 class_name FKActionUnitUi
 
-signal edit_requested(node)
-signal delete_requested(node)
-signal reorder_requested(source_item, target_item, drop_above: bool)
-
 @export_category("Controls")
 @export var panel: PanelContainer
 @export var label: Label
@@ -35,9 +31,6 @@ func get_block() -> FKActionUnit:
 		return _block as FKActionUnit
 	else:
 		return null
-		
-func _on_block_changed() -> void:
-	update_display()
 
 # ---------------------------------------------------------
 # Registry Handling

@@ -2,8 +2,6 @@
 extends Control
 class_name FKMainEditor
 
-
-
 ## Whether or not FlowKit auto-saves sheets in response to things
 ## like adding or editing Actions.
 @export var auto_save_sheets: bool = true
@@ -33,11 +31,11 @@ var pending_branch_id: String = ""  # The branch provider ID for the current wor
 var selected_row: FKUnitUi = null  # Currently selected event row
 var selected_item: FKUnitUi = null  # Currently selected condition/action item
 
-# Submodules
+# Submodules local to us
 var undo_manager: FKUndoManager = FKUndoManager.new()
 var clipboard := FKClipboardManager.new()
 var input_manager: FKMainEditorInputHandler = FKMainEditorInputHandler.new()
-var sheet_io : FKSheetIO = FKSheetIO.new()
+
 var serializer := FKSerializationManager.new()
 var unit_ui_factory: FKUnitUiFactory
 var sheet_auto_saver: FKSheetAutoSaver = FKSheetAutoSaver.new()
@@ -58,19 +56,46 @@ var is_editor_preview: bool:
 var _is_editor_preview := true
 
 func _enter_tree() -> void:
+	var instance_id := str(get_instance_id())
 	if is_editor_preview:
-		print("[FKMainEditor]: Entered tree as editor preview instance. Instance id: " + str(get_instance_id()))
+		print("[FKMainEditor]: Entered tree as editor preview instance. " +\
+		"Instance id: " + instance_id)
 		return
 	if is_fully_legit:
 		return
-	print("[FKMainEditor]: Entered tree as legit instance. Instance id: " + str(get_instance_id()))
-	unit_ui_factory = FKUnitUiFactory.new(sheet_io, editor_globals)
-	sheet_auto_saver.init(self, auto_save_sheets)
+	print("[FKMainEditor]: Entered tree as legit instance. Instance id: " + instance_id)
+	
+	editor_globals.get_main_editor_tree = func() -> SceneTree:
+		print("In the get_main_editor_tree func, self is " + str(self.get_class()))
+		return self.get_tree()
+	editor_globals.block_container_ui = blocks_container
+	editor_globals.sheet_editor_visible = self.visible
+	editor_globals.sheet_auto_saver = self.sheet_auto_saver
+	self.sheet_auto_saver.init(editor_globals)
+	blocks_container.globals = editor_globals
+	unit_ui_factory = FKUnitUiFactory.new(editor_globals)
+	
 	input_manager.initialize(self)
 	
 	_modal_related_prep()
 	_toggle_subs(true)
 
+func _apply_auto_save_enablement():
+	var auto_save_setting_registered: bool = \
+	_editor_settings.has_setting(FKEditorGlobals.AUTO_SAVE_TOGGLE_KEY)
+	var enable_auto_save: bool = false if not auto_save_setting_registered \
+	else _editor_settings.get_setting(FKEditorGlobals.AUTO_SAVE_TOGGLE_KEY)
+	
+	sheet_auto_saver.enabled = enable_auto_save
+
+var _editor_settings: EditorSettings:
+	get:
+		return editor_globals._editor_settings
+		
+var sheet_io : FKSheetIO:
+	get:
+		return editor_globals.sheet_io
+		
 var is_fully_legit: bool:
 	get:
 		return _is_fully_legit
@@ -93,24 +118,18 @@ func _toggle_subs(on: bool):
 		# This means that either this isn't a legit instance, or the signals object
 		# exited the tree before we did.
 		return
-		
+	
+	_toggle_modal_signal_subs(on)
+	
 	if on and !_is_subbed:
 		# For undo state on drag-and-drop reorder
+		visibility_changed.connect(_on_visibility_changed)
 		blocks_container.before_block_moved.connect(_push_undo_state)
-		modal_signals.node_selected.connect(_on_node_selected)
-		modal_signals.event_selected.connect(_on_event_selected)
-		modal_signals.action_selected.connect(_on_action_selected)
-		modal_signals.condition_selected.connect(_on_condition_selected)
-		modal_signals.expressions_confirmed.connect(_on_expressions_confirmed)
 		menu_bar.save_sheet.connect(_save_sheet)
 		add_event_btn.pressed.connect(_on_add_event_button_pressed)
 	elif !on and _is_subbed:
+		visibility_changed.disconnect(_on_visibility_changed)
 		blocks_container.before_block_moved.disconnect(_push_undo_state)
-		modal_signals.node_selected.disconnect(_on_node_selected)
-		modal_signals.event_selected.disconnect(_on_event_selected)
-		modal_signals.action_selected.disconnect(_on_action_selected)
-		modal_signals.condition_selected.disconnect(_on_condition_selected)
-		modal_signals.expressions_confirmed.disconnect(_on_expressions_confirmed)
 		menu_bar.save_sheet.disconnect(_save_sheet)
 		add_event_btn.pressed.disconnect(_on_add_event_button_pressed)
 	else:
@@ -119,7 +138,24 @@ func _toggle_subs(on: bool):
 	_is_subbed = on
 
 var _is_subbed := false
+	
+func _on_visibility_changed():
+	editor_globals.sheet_editor_visible = self.visible
 
+func _toggle_modal_signal_subs(on: bool):
+	if on and !_is_subbed:
+		modal_signals.node_selected.connect(_on_node_selected)
+		modal_signals.event_selected.connect(_on_event_selected)
+		modal_signals.action_selected.connect(_on_action_selected_in_modal)
+		modal_signals.condition_selected.connect(_on_condition_selected)
+		modal_signals.expressions_confirmed.connect(_on_expressions_confirmed)
+	elif !on and _is_subbed:
+		modal_signals.node_selected.disconnect(_on_node_selected)
+		modal_signals.event_selected.disconnect(_on_event_selected)
+		modal_signals.action_selected.disconnect(_on_action_selected_in_modal)
+		modal_signals.condition_selected.disconnect(_on_condition_selected)
+		modal_signals.expressions_confirmed.disconnect(_on_expressions_confirmed)
+		
 func _show_empty_state() -> void:
 	"""Show empty state UI (no scene loaded)."""
 	empty_label.visible = true
@@ -194,7 +230,7 @@ func _paste_events() -> void:
 	if selected_row:
 		insert_idx = selected_row.get_index() + 1
 
-	var first_row = null
+	var first_row: FKUnitUi = null
 	for ev in new_events:
 		var row := _create_unit_ui(ev)
 		blocks_container.add_child(row)
@@ -343,7 +379,11 @@ func _undo() -> void:
 	_is_in_undo_redo = false
 	print("[FKMainEditor]: Undo performed")
 	
-var _is_in_undo_redo := false
+var _is_in_undo_redo: bool:
+	get:
+		return editor_globals.is_in_undo_redo
+	set(value):
+		editor_globals.is_in_undo_redo = value
 	
 func _redo() -> void:
 	if not undo_manager.can_redo() or _is_in_undo_redo:
@@ -543,28 +583,30 @@ func _process(delta: float) -> void:
 	if scene_uid != current_scene_uid:
 		_reset_for_new_scene(scene_uid)
 		
-var current_scene_uid: int = 0
+var current_scene_uid: int:
+	get:
+		return editor_globals.current_scene_uid
+	set(value):
+		editor_globals.current_scene_uid = value
 
 func _reset_for_new_scene(scene_uid: int):
 	current_scene_uid = scene_uid
 	_clear_undo_history()
-	# We don't want the auto-saver being triggered by the UI-changes 
-	# we'll cause here, so...
-	sheet_auto_saver.enabled = false
+	editor_globals.sheet_editor_ready = false
 	_refresh_ui()
 	sheet_auto_saver.refresh()
 	if auto_save_sheets:
-		_enable_sheet_auto_save(30) 
+		_set_as_ready(30) 
 		# ^Surprisingly, 10 frames aren't enough.
 	
-func _enable_sheet_auto_save(frames_to_wait: int = 0):
+func _set_as_ready(frames_to_wait: int = 0):
 	if frames_to_wait > 0:
 		var frames_waited: int = 0
 		while frames_waited < frames_to_wait:
 			await get_tree().process_frame
 			frames_waited += 1
-			
-	sheet_auto_saver.enabled = true
+	
+	editor_globals.sheet_editor_ready = true
 
 # === Block Management ===
 
@@ -671,7 +713,7 @@ func _connect_group_signals(group: FKGroupUi) -> void:
 	group.selected.connect(_on_group_selected)
 	group.delete_requested.connect(_on_group_delete.bind(group))
 
-	group.before_data_changed.connect(_push_undo_state)
+	group.before_contents_changed.connect(func(n): _push_undo_state())
 	group.add_event_requested.connect(_on_group_add_event_requested)
 	# Connect edit signals from children inside groups
 	group.condition_edit_requested.connect(_on_condition_edit_requested)
@@ -760,7 +802,7 @@ func _on_add_group_button_pressed() -> void:
 
 # === Signal Connections ===
 
-func _connect_event_row_signals(row) -> void:
+func _connect_event_row_signals(row: FKEventRowUi) -> void:
 	row.insert_event_below_requested.connect(_on_row_insert_below.bind(row))
 	row.insert_comment_below_requested.connect(_on_row_insert_comment_below.bind(row))
 	row.replace_event_requested.connect(_on_row_replace.bind(row))
@@ -776,7 +818,7 @@ func _connect_event_row_signals(row) -> void:
 	row.condition_dropped.connect(_on_condition_dropped)
 	row.action_dropped.connect(_on_action_dropped)
 
-	row.before_data_changed.connect(_push_undo_state)
+	row.before_contents_changed.connect(func(n): _push_undo_state())
 	# Branch signals
 	row.add_branch_requested.connect(_on_row_add_branch.bind(row))
 	row.add_elseif_requested.connect(_on_branch_add_elseif)
@@ -921,23 +963,23 @@ func _on_row_selected(row: FKUnitUi) -> void:
 	_deselect_item()
 	
 	# Deselect previous row
-	if valid_selected_row and selected_row.has_method("set_selected"):
+	if valid_selected_row:
 		selected_row.set_selected(false)
 	
 	# Select new row
 	selected_row = row
-	if selected_row and selected_row.has_method("set_selected"):
+	if selected_row:
 		selected_row.set_selected(true)
 
 func _on_comment_selected(comment_node: FKCommentUi) -> void:
 	"""Handle comment block selection."""
 	_deselect_item()
 	
-	if valid_selected_row and selected_row.has_method("set_selected"):
+	if valid_selected_row:
 		selected_row.set_selected(false)
 	
 	selected_row = comment_node
-	if selected_row and selected_row.has_method("set_selected"):
+	if selected_row:
 		selected_row.set_selected(true)
 
 func _on_comment_delete(comment: FKCommentUi) -> void:
@@ -1130,8 +1172,8 @@ func _on_condition_selected(node_path: String, condition_id: String, inputs: Arr
 		else:
 			_finalize_condition_creation({})
 
-func _on_action_selected(node_path: String, action_id: String, inputs: Array) -> void:
-	"""Action type selected."""
+func _on_action_selected_in_modal(node_path: String, action_id: String, inputs: Array) -> void:
+	"""For right when the user chooses what type of Action to add to a block."""
 	pending_id = action_id
 	select_action_modal.hide()
 	
@@ -1879,7 +1921,7 @@ func _on_condition_edit_requested(condition_item: FKConditionUnitUi, bound_row) 
 	else:
 		print("[FKMainEditor]: Condition has no inputs to edit")
 
-func _on_action_edit_requested(action_item: FKActionUnitUi, bound_row) -> void:
+func _on_action_edit_requested(action_item: FKActionUnitUi, bound_row: FKUnitUi) -> void:
 	"""Handle double-click on action to edit its inputs."""
 	var act_data := action_item.get_block()
 	if not act_data:
@@ -1962,3 +2004,6 @@ func _on_action_dropped(source_row: FKEventRowUi, action_data: FKActionUnit, tar
 func _generate_unique_block_id(event_id: String) -> String:
 	"""Generate a unique ID for an event block."""
 	return "%s_%d_%d" % [event_id, Time.get_ticks_msec(), randi()]
+
+func get_class() -> String:
+	return "FKMainEditor"

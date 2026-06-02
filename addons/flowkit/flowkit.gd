@@ -21,6 +21,8 @@ func _disable_plugin() -> void:
 func _enter_tree() -> void:
 	_prep_editor_globals()
 	_prep_main_editor()
+	_prep_settings_window()
+	_prep_tool_submenu_entries()
 	_add_runtime_autoloads()
 	_register_as_main_screen_plugin()
 	
@@ -33,6 +35,8 @@ func _enter_tree() -> void:
 	print("[FlowKit]: Plugin loaded")
 
 func _prep_editor_globals():
+	# Some of its dependencies will be injected by us, 
+	# the rest by FKMainEditor later
 	action_registry = FKRegistry.new()
 	action_registry.load_providers()
 	
@@ -51,9 +55,36 @@ func _prep_main_editor():
 	editor.editor_globals = editor_globals
 	# ^Very important that we assign this _before_ legitimization. Why? At least
 	# 1 of FKMainEditor's submodules will need an FKEditorGlobals object
-	# immediately ready to go
+	# accessible
 	editor.legitimize()
+
+func _prep_settings_window():
+	const tool_menu_path := FKEditorGlobals.SETTINGS_WINDOW_TOOL_MENU_PATH
+	const scene_path := FKEditorGlobals.SETTINGS_WINDOW_SCENE_PATH
+	var window_scene: PackedScene = preload(scene_path)
+	settings_window = window_scene.instantiate() as FKSettingsWindow
 	
+	settings_window.visible = false
+	settings_window.globals = editor_globals
+	editor_globals.base_control.add_child(settings_window)
+	settings_window._legitimize()
+	
+var settings_window: FKSettingsWindow
+
+func _prep_tool_submenu_entries():
+	_base_popup = PopupMenu.new()
+	_base_popup.add_item("Settings", MENU_ITEM_SETTINGS)
+	_base_popup.id_pressed.connect(_on_base_popup_id_pressed)
+	add_tool_submenu_item("FlowKit", _base_popup)
+	
+var _base_popup: PopupMenu
+
+func _on_base_popup_id_pressed(id: int):
+	if id == MENU_ITEM_SETTINGS:
+		settings_window.popup_centered()
+
+const MENU_ITEM_SETTINGS := 0
+
 func _add_runtime_autoloads():
 	add_autoload_singleton(
 		"FlowKitSystem",
@@ -83,8 +114,10 @@ func _prep_export_plugin():
 	add_export_plugin(export_plugin)
 	
 func _exit_tree() -> void:
+	var tool_menu_path := FKEditorGlobals.SETTINGS_WINDOW_TOOL_MENU_PATH
+	remove_tool_menu_item(tool_menu_path)
+	_base_popup.id_pressed.disconnect(_on_base_popup_id_pressed)
 	action_registry.free()
-
 	remove_autoload_singleton("FlowKitSystem")
 	remove_autoload_singleton("FlowKit")
 	

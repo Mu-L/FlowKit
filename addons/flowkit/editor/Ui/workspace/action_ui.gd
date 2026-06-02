@@ -42,7 +42,7 @@ func _on_gui_input(event: InputEvent) -> void:
 		return
 	
 	if event.button_index == MOUSE_BUTTON_LEFT:
-		print("Action Ui clicked")
+		print("[FKActionUi]: Action Ui clicked. If you see this and are a user, please report this to the devs.")
 		selected.emit(self)
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
 		selected.emit(self)

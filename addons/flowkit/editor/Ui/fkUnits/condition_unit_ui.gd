@@ -23,9 +23,6 @@ var drop_above := true
 func _validate_block(to_set: FKUnit) -> bool:
 	return to_set == null or to_set is FKConditionUnit
 
-func _on_block_changed() -> void:
-	update_display()
-
 func get_block() -> FKConditionUnit:
 	return _block as FKConditionUnit
 
@@ -126,9 +123,7 @@ func _on_context_menu_id_pressed(id: int) -> void:
 		1: delete_requested.emit(self)
 		2: negate_requested.emit(self)
 
-signal edit_requested(node)
-signal delete_requested(node)
-signal negate_requested(node)
+signal negate_requested(node: FKUnitUi)
 
 # ---------------------------------------------------------
 # Input Handling
@@ -251,8 +246,6 @@ func _drop_data(at_position: Vector2, data) -> void:
 	
 	var above := at_position.y < size.y / 2.0
 	reorder_requested.emit(source_node, self, above)
-
-signal reorder_requested(source_item, target_item, drop_above: bool)
 
 func _show_drop_indicator(above: bool) -> void:
 	if not drop_indicator:

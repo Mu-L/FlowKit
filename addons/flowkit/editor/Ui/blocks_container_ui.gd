@@ -42,13 +42,21 @@ func _on_child_entered_tree(child: Node):
 	var ui := child as FKUnitUi
 	_update_lookup_registration(ui, true)
 	_toggle_sub_for(ui, true)
+	_unit_ui_signals.entered_sheet_ui.emit(ui)
 	
+var _unit_ui_signals: FKUnitUiSignals:
+	get:
+		return globals.unit_ui_signals
+		
+var globals: FKEditorGlobals
+
 func _on_child_exiting_tree(child: Node):
 	if child is not FKUnitUi:
 		return
 	var ui := child as FKUnitUi
 	_update_lookup_registration(ui, false)
 	_toggle_sub_for(ui, false)
+	_unit_ui_signals.exiting_sheet_ui.emit(ui)
 
 func _ready() -> void:
 	pass
@@ -70,11 +78,11 @@ var _unit_lookup: Dictionary[FKUnitUi, FKUnit] = {}
 # We need this to keep our unit cache updated whenever needed.
 func _toggle_sub_for(ui: FKUnitUi, on: bool):
 	if on:
-		ui.block_changed.connect(_on_unit_ui_block_changed)
+		ui.contents_changed.connect(_on_unit_ui_contents_changed)
 	else:
-		ui.block_changed.disconnect(_on_unit_ui_block_changed)
+		ui.contents_changed.disconnect(_on_unit_ui_contents_changed)
 		
-func _on_unit_ui_block_changed(ui: FKUnitUi):
+func _on_unit_ui_contents_changed(ui: FKUnitUi):
 	_update_lookup_registration(ui, true) 
 	# ^ Since we're listening for this unit ui, naturally we'll want to keep it registered
 			

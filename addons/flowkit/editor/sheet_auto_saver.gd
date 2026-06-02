@@ -5,62 +5,74 @@
 extends RefCounted
 class_name FKSheetAutoSaver
 
-func init(main_editor: FKMainEditor, enabled: bool = true):
-	self._main_editor = main_editor
+func init(editor_globals: FKEditorGlobals, enabled: bool = true):
+	self._globals = editor_globals
+	self._editor_settings = editor_globals.editor_settings
 	self.enabled = enabled
-	_prep_cooldown_timer()
+	_prep_cooldown_timer.call_deferred()
+	_toggle_subs(true)
+	print("[FKSheetAutoSaver]: Initialized.")
 	
-var _main_editor: FKMainEditor 
+var _globals: FKEditorGlobals
 # ^Used as a context to access other modules as needed
+var _editor_settings: EditorSettings
 var enabled: bool = false
-# ^Decides whether or not this can do any saving
+# ^Decides whether or not this can do any saving.
 
 func _prep_cooldown_timer():
 	if _cooldown_timer:
 		return
 		
 	_cooldown_timer = Timer.new()
-	_cooldown_timer.one_shot = false
+	_cooldown_timer.one_shot = true
 	_cooldown_timer.wait_time = COOLDOWN
-	_main_editor.add_child(_cooldown_timer)
+	_base_control.add_child(_cooldown_timer)
 	_cooldown_timer.timeout.connect(_on_cooldown_finished)
-	
+
 var _cooldown_timer: Timer
 const COOLDOWN := 0.2
 
+var _base_control: Control:
+	get:
+		return _globals.base_control
+		
 func _on_cooldown_finished():
 	_cooldown_active = false
 
-	if _save_scheduled:
-		_save_scheduled = false
-		_handle_save_as_needed()
-
 var _cooldown_active: bool = false
-var _save_scheduled: bool = false
 
 func _handle_save_as_needed():
-	if not _cooldown_active:
-		_save_after_one_frame()
-		_start_cooldown()
-	else:
-		_save_scheduled = true
-
+	if not _allowed_to_save:
+		var log_message := "[FKSheetAutoSaver]: Not allowed to save. Enabled: " + str(enabled) +\
+		" | cooldown active: " + str(_cooldown_active) + " | sheet editor visible: " + \
+		str(_globals.sheet_editor_visible) + " | Sheet editor ready: " + \
+		str(_globals.sheet_editor_ready)
+		print(log_message)
+		return
+		
+	_save_after_one_frame()
+	_start_timer_and_cooldown()
+	
+var _allowed_to_save: bool:
+	get:
+		return self.enabled and not _cooldown_active and \
+	_globals.sheet_editor_visible and _globals.sheet_editor_ready
+	
 func _save_after_one_frame():
 	# Why one frame? To give time for any setup that the unit uis need upon
 	# being added, removed, etc.
-	if enabled:
-		await _main_editor.get_tree().process_frame 
-		_save_sheet()
+	var tree := _base_control.get_tree()
+	await tree.process_frame
+	_save_sheet()
 
 ## Saves the sheet to disk before returning it.
 ## If saving fails, this returns null.
 func _save_sheet() -> FKEventSheet:
-	if not enabled:
-		return
-		
-	var current_scene_uid = _main_editor.current_scene_uid
+	# No enablement checks here, what with the one-frame lag between the saving and
+	# the start of the cooldown timer
+	var current_scene_uid = _globals.current_scene_uid
 	var is_scene_open: bool = current_scene_uid > 0
-	var in_undo_redo := _main_editor._is_in_undo_redo
+	var in_undo_redo := _globals.is_in_undo_redo
 	if not is_scene_open or in_undo_redo:
 		push_warning("[FKSheetAutoSaver] No scene open to save event sheet.")
 		return
@@ -69,7 +81,7 @@ func _save_sheet() -> FKEventSheet:
 	var sheet := FKEventSheet.from_units(units)
 	
 	var result: FKEventSheet = null
-	var sheet_io := _main_editor.sheet_io
+	var sheet_io := _globals.sheet_io
 	var err := sheet_io.save_sheet(current_scene_uid, sheet)
 
 	if err == OK:
@@ -83,107 +95,54 @@ func _save_sheet() -> FKEventSheet:
 var _block_container: FKBlockContainerUi:
 	get:
 		var result: FKBlockContainerUi = null
-		if _main_editor:
-			result = _main_editor.blocks_container
+		if _globals:
+			result = _globals.block_container_ui
 		return result
 		
-func _start_cooldown():
+func _start_timer_and_cooldown():
 	_cooldown_active = true
 	_cooldown_timer.start()
 	
 ## Ensures that the auto-saver is properly in sync with things.
 func refresh():
-	_toggle_subs(false)
-	_units_listening_for.clear()
-	var current_uis := _block_container.unit_uis
-	_units_listening_for.append_array(current_uis)
-	_toggle_subs(true)
-	_prep_cooldown_timer()
+	# No-op for now, thanks to the new signal bus approach
+	pass
 	
 func _toggle_subs(on: bool):
-	for unit_ui in _units_listening_for:
-		if not is_instance_valid(unit_ui):
-			continue
-		
-		if unit_ui is FKCommentUi:
-			_toggle_subs_comment(on, unit_ui)
-		elif unit_ui is FKGroupUi:
-			_toggle_subs_group(on, unit_ui)
-		elif unit_ui is FKEventRowUi:
-			_toggle_subs_event_row(on, unit_ui)
-			
-	_toggle_block_container_subs(on)
-	
-var _units_listening_for: Array[FKUnitUi] = []
-
-func _toggle_subs_comment(on: bool, comment: FKCommentUi):
-	var currently_subbed: bool = _comments_subbed_to.get(comment) == true
-	
-	if on and not currently_subbed:
-		comment.block_contents_changed.connect(_on_block_state_changed)
-		_comments_subbed_to[comment] = true
-	elif !on and currently_subbed:
-		comment.block_contents_changed.disconnect(_on_block_state_changed)
-		_comments_subbed_to.erase(comment)
-
-var _comments_subbed_to: Dictionary[FKCommentUi, bool] = {}
-
-func _on_block_state_changed():
-	if not enabled:
+	if on and not _is_subbed:
+		_unit_ui_signals.contents_changed.connect(_on_unit_contents_changed)
+		_unit_ui_signals.entered_sheet_ui.connect(_on_child_entered_block_container)
+		_unit_ui_signals.exiting_sheet_ui.connect(_on_child_exiting_block_container)
+		_unit_ui_signals.moved_in_sheet_ui.connect(_on_block_container_children_reordered)
+	elif _is_subbed and not on:
+		_unit_ui_signals.contents_changed.disconnect(_on_unit_contents_changed)
+		_unit_ui_signals.entered_sheet_ui.disconnect(_on_child_entered_block_container)
+		_unit_ui_signals.exiting_sheet_ui.disconnect(_on_child_exiting_block_container)
+		_unit_ui_signals.moved_in_sheet_ui.disconnect(_on_block_container_children_reordered)
+	else:
 		return
-	
+		
+	_is_subbed = on
+
+var _is_subbed := false
+
+var _unit_ui_signals: FKUnitUiSignals:
+	get:
+		return _globals.unit_ui_signals
+		
+func _on_unit_contents_changed(unit_ui: FKUnitUi):
+	print("[FKSheetAutoSaver]: Responding to unit contents changing")
 	_handle_save_as_needed()
 
+func _on_child_entered_block_container(child: FKUnitUi):
+	print("[FKSheetAutoSaver]: Responding to block child entering")
+	_handle_save_as_needed()
 
-func _toggle_subs_group(on: bool, group: FKGroupUi):
-	var currently_subbed: bool = _groups_subbed_to.get(group) == true
-	
-	if on and not currently_subbed:
-		group.data_changed.connect(_on_block_state_changed)
-		_groups_subbed_to[group] = true
-	elif !on and currently_subbed:
-		group.data_changed.disconnect(_on_block_state_changed)
-		_groups_subbed_to.erase(group)
-
-var _groups_subbed_to: Dictionary[FKGroupUi, bool] = {}
-
-func _toggle_subs_event_row(on: bool, event_row: FKEventRowUi):
-	var currently_subbed: bool = _event_rows_subbed_to.get(event_row) == true
-	
-	if on and not currently_subbed:
-		event_row.data_changed.connect(_on_block_state_changed)
-		_event_rows_subbed_to[event_row] = true
-	elif !on and currently_subbed:
-		event_row.data_changed.disconnect(_on_block_state_changed)
-		_event_rows_subbed_to.erase(event_row)
-
-var _event_rows_subbed_to: Dictionary[FKEventRowUi, bool] = {}
-
-func _toggle_block_container_subs(on: bool):
-	if on and not _subbed_to_block_container:
-		_block_container.child_entered_tree.connect(_on_child_entered_block_container)
-		_block_container.child_exiting_tree.connect(_on_child_exiting_block_container)
-		_block_container.child_order_changed.connect(_on_block_container_children_reordered)
-	elif _subbed_to_block_container && !on:
-		_block_container.child_entered_tree.disconnect(_on_child_entered_block_container)
-		_block_container.child_exiting_tree.disconnect(_on_child_exiting_block_container)
-		_block_container.child_order_changed.disconnect(_on_block_container_children_reordered)
-		
-	_subbed_to_block_container = on
-		
-var _subbed_to_block_container := false
-
-func _on_child_entered_block_container(child: Node):
-	if child is FKUnitUi:
-		_handle_save_as_needed()
-
-func _on_child_exiting_block_container(child: Node):
-	if child is FKUnitUi:
-		_handle_save_as_needed()
+func _on_child_exiting_block_container(child: FKUnitUi):
+	print("[FKSheetAutoSaver]: Responding to block child exiting")
+	_handle_save_as_needed()
 	
 func _on_block_container_children_reordered():
+	print("[FKSheetAutoSaver]: Responding to block children reordered")
 	_handle_save_as_needed()
 	
-func reset():
-	_comments_subbed_to.clear()
-	_groups_subbed_to.clear()

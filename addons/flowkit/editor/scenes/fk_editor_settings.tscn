@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://dne6ojb7egk0p"]
+
+[ext_resource type="Script" uid="uid://d2tcskuiujrg7" path="res://addons/flowkit/editor/settings_window.gd" id="1_tn2p2"]
+[ext_resource type="Texture2D" uid="uid://dfw21gww7gdwq" path="res://addons/flowkit/assets/flowkitLogoAlt.png" id="2_1wusu"]
+
+[node name="FKEditorSettings" type="Window" unique_id=813573723 node_paths=PackedStringArray("auto_save_toggle", "save_button")]
+oversampling_override = 1.0
+title = "FlowKit Editor Settings"
+position = Vector2i(0, 36)
+size = Vector2i(800, 500)
+unresizable = true
+minimize_disabled = true
+maximize_disabled = true
+script = ExtResource("1_tn2p2")
+auto_save_toggle = NodePath("MainList/AutoSave/CheckButton")
+save_button = NodePath("SaveSettingsButton")
+metadata/_custom_type_script = "uid://d2tcskuiujrg7"
+
+[node name="BG" type="ColorRect" parent="." unique_id=1156956499]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.16078432, 0.16078432, 0.16078432, 1)
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1413048301]
+modulate = Color(1, 1, 1, 0.5)
+custom_minimum_size = Vector2(455, 100)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+texture = ExtResource("2_1wusu")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="MainList" type="VBoxContainer" parent="." unique_id=903571534]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AutoSave" type="Control" parent="MainList" unique_id=1735561752]
+custom_minimum_size = Vector2(300, 50)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="CheckButton" type="CheckButton" parent="MainList/AutoSave" unique_id=1536943101]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -114.5
+offset_top = -15.5
+offset_right = 114.5
+offset_bottom = 15.5
+grow_horizontal = 2
+grow_vertical = 2
+button_pressed = true
+text = "Auto-Save Event Sheets"
+
+[node name="SaveSettingsButton" type="Button" parent="." unique_id=911981487]
+anchors_preset = -1
+anchor_left = 0.3
+anchor_top = 0.9
+anchor_right = 0.7
+anchor_bottom = 0.98
+text = "Save Settings"

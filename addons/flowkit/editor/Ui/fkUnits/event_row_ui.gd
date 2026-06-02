@@ -18,34 +18,34 @@ var ACTION_ITEM_SCENE: PackedScene:
 	get:
 		return FKEditorGlobals.ACTION_ITEM_SCENE
 
-signal insert_event_below_requested(event_row)
-signal insert_comment_below_requested(event_row)
-signal replace_event_requested(event_row)
-signal delete_event_requested(event_row)
-signal edit_event_requested(event_row)
+signal insert_event_below_requested(event_row: FKEventRowUi)
+signal insert_comment_below_requested(event_row: FKEventRowUi)
+signal replace_event_requested(event_row: FKEventRowUi)
+signal delete_event_requested(event_row: FKEventRowUi)
+signal edit_event_requested(event_row: FKEventRowUi)
 
-signal add_condition_requested(event_row)
-signal add_action_requested(event_row)
+signal add_condition_requested(event_row: FKEventRowUi)
+signal add_action_requested(event_row: FKEventRowUi)
 
-signal condition_selected(condition_node)
-signal action_selected(action_node)
+signal condition_selected(condition_node: FKConditionUnitUi)
+signal action_selected(action_node: FKActionUnitUi)
 
-signal condition_edit_requested(condition_item)
-signal action_edit_requested(action_item)
+signal condition_edit_requested(condition_item: FKConditionUnitUi)
+signal action_edit_requested(action_item: FKActionUnitUi)
 
-signal data_changed()
 signal condition_dropped(source_row, condition_data, target_row)
 signal action_dropped(source_row, action_data, target_row)
-signal before_data_changed() # Emitted before any data modification for undo state capture
 
 # Branch signals
-signal add_branch_requested(event_row, branch_id)
-signal add_elseif_requested(branch_item, event_row)
-signal add_else_requested(branch_item, event_row)
-signal branch_condition_edit_requested(branch_item, event_row)
-signal branch_action_add_requested(branch_item, event_row)
-signal branch_action_edit_requested(action_item, branch_item, event_row)
-signal nested_branch_add_requested(branch_item, branch_id, event_row)
+signal add_branch_requested(event_row: FKEventRowUi, branch_id: String)
+signal add_elseif_requested(branch_item: FKBranchUnitUi, event_row: FKEventRowUi)
+signal add_else_requested(branch_item: FKBranchUnitUi, event_row: FKEventRowUi)
+signal branch_condition_edit_requested(branch_item: FKBranchUnitUi, event_row: FKEventRowUi)
+signal branch_action_add_requested(branch_item: FKBranchUnitUi, event_row: FKEventRowUi)
+signal branch_action_edit_requested(action_item: FKActionUnitUi, branch_item: FKBranchUnitUi, \
+event_row: FKEventRowUi)
+signal nested_branch_add_requested(branch_item: FKBranchUnitUi, branch_id: String, \
+event_row: FKEventRowUi)
 
 # Ui and Styling
 @export_category("Controls")
@@ -78,12 +78,6 @@ const _preview_label_color := Color(0.9, 0.95, 0.9, 0.7)
 
 func _validate_block(to_set: FKUnit) -> bool:
 	return to_set == null or to_set is FKEventBlock
-
-func _on_block_changed() -> void:
-	update_display()
-
-func _on_registry_set() -> void:
-	_update_display()
 
 func _update_styling() -> void:
 	var style := selected_stylebox if is_selected \
@@ -346,7 +340,7 @@ func _update_conditions() -> void:
 
 	for condition_data in e.conditions:
 		var item: FKConditionUnitUi = CONDITION_ITEM_SCENE.instantiate()
-		item.legitimize(condition_data, registry)
+		item.legitimize(condition_data, _globals)
 		_connect_condition_item_signals(item)
 		conditions_container.add_child(item)
 
@@ -397,14 +391,14 @@ func _clear_action_container():
 func _add_branch_item_based_on(act_data: FKActionUnit):
 	#print("Adding branch action in Event row ui")
 	var branch: FKBranchUnitUi = BRANCH_ITEM_SCENE.instantiate()
-	branch.legitimize(act_data, registry)
+	branch.legitimize(act_data, _globals)
 	_connect_branch_item_signals(branch)
 	actions_container.add_child(branch)
 
 func _add_regular_action_item_based_on(act_data: FKActionUnit):
 	#print("Adding regular action in Event row ui")
 	var item: FKActionUnitUi = ACTION_ITEM_SCENE.instantiate()
-	item.legitimize(act_data, registry)
+	item.legitimize(act_data, _globals)
 	_connect_action_item_signals(item)
 	actions_container.add_child(item)
 
@@ -413,71 +407,75 @@ func _add_regular_action_item_based_on(act_data: FKActionUnit):
 # ---------------------------------------------------------
 
 func _connect_condition_item_signals(item: FKConditionUnitUi) -> void:
-	item.selected.connect(func(node): condition_selected.emit(node))
+	item.selected.connect(_on_condition_selected)
 	item.edit_requested.connect(_on_condition_item_edit)
 	item.delete_requested.connect(_on_condition_item_delete)
 	item.negate_requested.connect(_on_condition_item_negate)
 	item.reorder_requested.connect(_on_condition_reorder)
 
-func _connect_action_item_signals(item) -> void:
-	if item.has_signal("selected"):
-		item.selected.connect(func(node): action_selected.emit(node))
-	if item.has_signal("edit_requested"):
-		item.edit_requested.connect(_on_action_item_edit)
-	if item.has_signal("delete_requested"):
-		item.delete_requested.connect(_on_action_item_delete)
-	if item.has_signal("reorder_requested"):
-		item.reorder_requested.connect(_on_action_reorder)
+func _on_condition_selected(act: FKConditionUnitUi):
+	print("[FKEventRowUi]: Condition selected")
+	condition_selected.emit(act)
+	
+func _connect_action_item_signals(item: FKActionUnitUi) -> void:
+	item.selected.connect(_on_action_selected)
+	item.edit_requested.connect(_on_action_item_edit)
+	item.delete_requested.connect(_on_action_item_delete)
+	item.reorder_requested.connect(_on_action_reorder)
 
-func _connect_branch_item_signals(branch) -> void:
-	if branch.has_signal("selected"):
-		branch.selected.connect(func(node): action_selected.emit(node))
+func _on_action_selected(act: FKActionUnitUi):
+	print("[FKEventRowUi]: Action selected")
+	action_selected.emit(act)
+	
+func _connect_branch_item_signals(branch: FKBranchUnitUi) -> void:
+	branch.selected.connect(_on_branch_selected)
+	branch.edit_condition_requested.connect(_on_branch_condition_edit_requested)
+	branch.delete_requested.connect(_on_branch_item_delete)
+	branch.add_elseif_requested.connect(_on_branch_add_elseif_requested)
+	branch.add_else_requested.connect(_on_branch_add_else_requested)
+	branch.add_branch_action_requested.connect(_on_branch_add_nested_branch_requested)
+	branch.branch_action_edit_requested.connect(_on_branch_action_edit_requested)
+	branch.branch_action_selected.connect(_on_branch_action_selected)
+	branch.reorder_requested.connect(_on_action_reorder)
+	branch.action_cross_reorder_requested.connect(_on_action_cross_reorder)
+	branch.action_dropped_into_branch.connect(_on_action_dropped_into_branch)
+	branch.before_contents_changed.connect(_on_branch_before_contents_changed)
+	branch.add_nested_branch_requested.connect(_on_nested_branch_requested)
 
-	if branch.has_signal("edit_condition_requested"):
-		branch.edit_condition_requested.connect(func(item): branch_condition_edit_requested.emit(item, self))
+func _on_branch_selected(act: FKBranchUnitUi):
+	print("[FKEventRowUi]: Branch Unit selected")
+	action_selected.emit(act)
+	
+func _on_branch_condition_edit_requested(branch: FKBranchUnitUi):
+	branch_condition_edit_requested.emit(branch, self)
+	
+func _on_branch_add_elseif_requested(branch: FKBranchUnitUi):
+	add_elseif_requested.emit(branch, self)
+	
+func _on_branch_add_else_requested(branch: FKBranchUnitUi):
+	add_else_requested.emit(branch, self)
+	
+func _on_branch_add_nested_branch_requested(branch: FKBranchUnitUi):
+	branch_action_add_requested.emit(branch, self)
 
-	if branch.has_signal("delete_requested"):
-		branch.delete_requested.connect(_on_branch_item_delete)
+func _on_branch_action_edit_requested(action_item, branch: FKBranchUnitUi):
+	branch_action_edit_requested.emit(action_item, branch, self)
 
-	if branch.has_signal("add_elseif_requested"):
-		branch.add_elseif_requested.connect(func(item): add_elseif_requested.emit(item, self))
+func _on_branch_action_selected(action_item: FKActionUnitUi):
+	action_selected.emit(action_item)
+	
+func _on_branch_before_contents_changed(branch: FKBranchUnitUi):
+	before_contents_changed.emit(self)
 
-	if branch.has_signal("add_else_requested"):
-		branch.add_else_requested.connect(func(item): add_else_requested.emit(item, self))
-
-	if branch.has_signal("add_branch_action_requested"):
-		branch.add_branch_action_requested.connect(func(item): branch_action_add_requested.emit(item, self))
-
-	if branch.has_signal("branch_action_edit_requested"):
-		branch.branch_action_edit_requested.connect(func(act_item, br_item): branch_action_edit_requested.emit(act_item, br_item, self))
-
-	if branch.has_signal("branch_action_selected"):
-		branch.branch_action_selected.connect(func(node): action_selected.emit(node))
-
-	if branch.has_signal("reorder_requested"):
-		branch.reorder_requested.connect(_on_action_reorder)
-
-	if branch.has_signal("action_cross_reorder_requested"):
-		branch.action_cross_reorder_requested.connect(_on_action_cross_reorder)
-
-	if branch.has_signal("action_dropped_into_branch"):
-		branch.action_dropped_into_branch.connect(_on_action_dropped_into_branch)
-
-	if branch.has_signal("data_changed"):
-		branch.data_changed.connect(func(): data_changed.emit())
-
-	if branch.has_signal("before_data_changed"):
-		branch.before_data_changed.connect(func(): before_data_changed.emit())
-
-	if branch.has_signal("add_nested_branch_requested"):
-		branch.add_nested_branch_requested.connect(func(item, bid): nested_branch_add_requested.emit(item, bid, self))
-
+func _on_nested_branch_requested(requester: FKBranchUnitUi, branch_id: String):
+	nested_branch_add_requested.emit(requester, branch_id, self)
+	
 # ---------------------------------------------------------
 # Condition handlers
 # ---------------------------------------------------------
 
 func _on_branch_item_delete(item: FKUnitUi) -> void:
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 	var act_data := item.get_block()
 	var e := _get_event()
 	if act_data and e:
@@ -485,13 +483,12 @@ func _on_branch_item_delete(item: FKUnitUi) -> void:
 		if idx >= 0:
 			e.actions.remove_at(idx)
 		_update_actions()
-		data_changed.emit()
 
 func _on_condition_item_edit(item: FKConditionUnitUi) -> void:
 	condition_edit_requested.emit(item)
 
 func _on_condition_item_delete(item: FKConditionUnitUi) -> void:
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 	var cond_data = item.get_block()
 	var e := _get_event()
 	if cond_data and e:
@@ -499,15 +496,15 @@ func _on_condition_item_delete(item: FKConditionUnitUi) -> void:
 		if idx >= 0:
 			e.conditions.remove_at(idx)
 		_update_conditions()
-		data_changed.emit()
+		contents_changed.emit(self)
 
 func _on_condition_item_negate(item: FKConditionUnitUi) -> void:
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 	var cond_data = item.get_block()
 	if cond_data:
 		cond_data.negated = not cond_data.negated
 		item.update_display()
-		data_changed.emit()
+		contents_changed.emit(self)
 
 # ---------------------------------------------------------
 # Action handlers
@@ -517,7 +514,7 @@ func _on_action_item_edit(item: FKActionUnitUi) -> void:
 	action_edit_requested.emit(item)
 
 func _on_action_item_delete(item: FKActionUnitUi) -> void:
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 	var act_data = item.get_block()
 	var e := _get_event()
 	if act_data and e:
@@ -525,7 +522,7 @@ func _on_action_item_delete(item: FKActionUnitUi) -> void:
 		if idx >= 0:
 			e.actions.remove_at(idx)
 		_update_actions()
-		data_changed.emit()
+		contents_changed.emit(self)
 
 # ---------------------------------------------------------
 # Reordering helpers
@@ -559,7 +556,7 @@ drop_above: bool) -> void:
 	if source_idx == final_idx:
 		return
 
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 
 	e.conditions.remove_at(source_idx)
 	if source_idx < target_idx:
@@ -569,7 +566,7 @@ drop_above: bool) -> void:
 	e.conditions.insert(insert_idx, source_data)
 
 	_update_conditions()
-	data_changed.emit()
+	contents_changed.emit(self)
 
 func _recursive_remove_action(actions_array: Array, target_action) -> bool:
 	var idx = actions_array.find(target_action)
@@ -589,7 +586,7 @@ target_branch: FKActionUnitUi) -> void:
 	if not e:
 		return
 
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 
 	_recursive_remove_action(e.actions, source_data)
 
@@ -604,7 +601,7 @@ target_branch: FKActionUnitUi) -> void:
 		target_actions.append(source_data)
 
 	_update_actions()
-	data_changed.emit()
+	contents_changed.emit(self)
 
 func _on_action_dropped_into_branch(source_item: FKActionUnitUi, target_branch: FKBranchUnitUi) -> void:
 	var e := _get_event()
@@ -615,14 +612,14 @@ func _on_action_dropped_into_branch(source_item: FKActionUnitUi, target_branch: 
 	if not source_data:
 		return
 
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 
 	_recursive_remove_action(e.actions, source_data)
 	var action_data: FKActionUnit = target_branch.get_block()
 	action_data.branch_actions.append(source_data)
 
 	_update_actions()
-	data_changed.emit()
+	contents_changed.emit(self)
 
 func _on_action_reorder(source_item: FKActionUnitUi, target_item: FKActionUnitUi, 
 drop_above: bool) -> void:
@@ -642,7 +639,7 @@ drop_above: bool) -> void:
 		return
 
 	if source_idx < 0:
-		before_data_changed.emit()
+		before_contents_changed.emit(self)
 
 		if not _recursive_remove_action(e.actions, source_data):
 			return
@@ -655,7 +652,7 @@ drop_above: bool) -> void:
 		e.actions.insert(insert_idx, source_data)
 
 		_update_actions()
-		data_changed.emit()
+		contents_changed.emit(self)
 		return
 
 	if source_idx == target_idx:
@@ -670,7 +667,7 @@ drop_above: bool) -> void:
 	if source_idx == final_idx:
 		return
 
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 
 	e.actions.remove_at(source_idx)
 	if source_idx < target_idx:
@@ -680,7 +677,7 @@ drop_above: bool) -> void:
 	e.actions.insert(insert_idx2, source_data)
 
 	_update_actions()
-	data_changed.emit()
+	contents_changed.emit(self)
 
 func _pull_action_to_top_level(act_data: FKActionUnit) -> void:
 	var e := _get_event()
@@ -690,13 +687,13 @@ func _pull_action_to_top_level(act_data: FKActionUnit) -> void:
 	if e.actions.has(act_data):
 		return
 
-	before_data_changed.emit()
+	before_contents_changed.emit(self)
 
 	if _recursive_remove_action(e.actions, act_data):
 		e.actions.append(act_data)
 
 	_update_actions()
-	data_changed.emit()
+	contents_changed.emit(self)
 
 # ---------------------------------------------------------
 # Add condition / action to data
@@ -739,7 +736,8 @@ func _create_drag_preview() -> Control:
 
 func _can_drop_data(at_position: Vector2, data) -> bool:
 	if data is not FKDragData:
-		printerr("FKEventRowUi _can_drop_data was not passed an FKDragData. It was given: " + str(data))
+		printerr("FKEventRowUi _can_drop_data was not passed an FKDragData. " +\
+		"It was given: " + str(data))
 		return false
 
 	var drag_data := data as FKDragData

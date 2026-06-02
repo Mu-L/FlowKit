@@ -12,9 +12,7 @@ signal branch_action_selected(action_item: FKActionUnitUi)
 signal branch_action_reorder_requested(source_item: FKActionUnitUi, target_item: FKActionUnitUi, drop_above: bool)
 signal action_cross_reorder_requested(source_data, target_data, is_drop_above: bool, target_branch: FKActionUnitUi)
 signal action_dropped_into_branch(source_item: FKActionUnitUi, target_branch_item: FKBranchUnitUi)
-signal data_changed()
-signal before_data_changed()
-signal add_nested_branch_requested(branch_item: FKBranchUnitUi, branch_id)
+signal add_nested_branch_requested(branch_item: FKBranchUnitUi, branch_id: String)
 
 var parent_branch: Control = null
 
@@ -43,9 +41,6 @@ var is_body_drop := false
 
 func _validate_block(to_set: FKUnit) -> bool:
 	return to_set is FKActionUnit and to_set.is_branch
-
-func _on_block_changed() -> void:
-	update_display()
 
 func _on_registry_set() -> void:
 	update_display()
@@ -133,10 +128,10 @@ func _toggle_negate() -> void:
 	if not _action.branch_condition:
 		return
 
-	before_data_changed.emit()
+	before_contents_changed.emit()
 	_action.branch_condition.negated = not _action.branch_condition.negated
 	update_display()
-	data_changed.emit()
+	contents_changed.emit(self)
 
 # ---------------------------------------------------------
 # Add Action Button
@@ -290,13 +285,13 @@ func _update_branch_actions() -> void:
 		if sub.is_branch:
 			var scene := load(FKEditorGlobals.BRANCH_ITEM_SCENE_PATH)
 			var nested: FKBranchUnitUi = scene.instantiate()
-			nested.legitimize(sub, registry)
+			nested.legitimize(sub, _globals)
 			nested.parent_branch = self
 			_connect_nested_branch_signals(nested)
 			actions_container.add_child(nested)
 		else:
 			var item: FKActionUnitUi = FKEditorGlobals.ACTION_ITEM_SCENE.instantiate()
-			item.legitimize(sub, registry)
+			item.legitimize(sub, _globals)
 			_connect_sub_action_signals(item)
 			actions_container.add_child(item)
 
@@ -304,45 +299,41 @@ func _update_branch_actions() -> void:
 # Sub‑Action Signal Wiring
 # ---------------------------------------------------------
 
-func _connect_sub_action_signals(item) -> void:
-	if item.has_signal("selected"):
-		item.selected.connect(func(n): branch_action_selected.emit(n))
-	if item.has_signal("edit_requested"):
-		item.edit_requested.connect(func(n): branch_action_edit_requested.emit(n, self))
-	if item.has_signal("delete_requested"):
-		item.delete_requested.connect(func(n): _on_sub_action_delete(n))
-	if item.has_signal("reorder_requested"):
-		item.reorder_requested.connect(_on_sub_action_reorder)
+func _connect_sub_action_signals(item: FKActionUnitUi) -> void:
+	item.selected.connect(func(n): branch_action_selected.emit(item))
+	item.edit_requested.connect(func(n): branch_action_edit_requested.emit(n, self))
+	item.delete_requested.connect(func(n): _on_sub_action_delete(n))
+	item.reorder_requested.connect(_on_sub_action_reorder)
 
 func _connect_nested_branch_signals(nested: FKBranchUnitUi) -> void:
-	nested.selected.connect(func(n): selected.emit(n))
+	nested.selected.connect(func(n): self.selected.emit(nested))
 	nested.edit_condition_requested.connect(func(i): edit_condition_requested.emit(i))
 	nested.delete_requested.connect(func(i): _on_sub_action_delete(i))
 	nested.add_elseif_requested.connect(func(i): add_elseif_requested.emit(i))
 	nested.add_else_requested.connect(func(i): add_else_requested.emit(i))
 	nested.add_branch_action_requested.connect(func(i): add_branch_action_requested.emit(i))
 	nested.branch_action_edit_requested.connect(func(ai, bi): branch_action_edit_requested.emit(ai, bi))
-	nested.branch_action_selected.connect(func(n): branch_action_selected.emit(n))
+	nested.branch_action_selected.connect(func(): branch_action_selected.emit(nested))
 	nested.add_nested_branch_requested.connect(func(i, bid): add_nested_branch_requested.emit(i, bid))
 	nested.reorder_requested.connect(_on_sub_action_reorder)
 	nested.action_cross_reorder_requested.connect(func(sd, td, above, tb): action_cross_reorder_requested.emit(sd, td, above, tb))
 	nested.action_dropped_into_branch.connect(func(si, bi): action_dropped_into_branch.emit(si, bi))
-	nested.data_changed.connect(func(): data_changed.emit())
-	nested.before_data_changed.connect(func(): before_data_changed.emit())
+	nested.contents_changed.connect(func(n): contents_changed.emit(n))
+	nested.before_contents_changed.connect(func(): before_contents_changed.emit())
 
 # ---------------------------------------------------------
 # Sub‑Action Delete / Reorder
 # ---------------------------------------------------------
 
-func _on_sub_action_delete(item) -> void:
-	before_data_changed.emit()
+func _on_sub_action_delete(item: FKUnitUi) -> void:
+	before_contents_changed.emit()
 	var data: FKUnit = item.get_block()
 	if data and _action:
 		var idx := _action.branch_actions.find(data)
 		if idx >= 0:
 			_action.branch_actions.remove_at(idx)
 	_update_branch_actions()
-	data_changed.emit()
+	contents_changed.emit(item)
 
 func _on_sub_action_reorder(source_item, target_item, drop_above: bool) -> void:
 	if not _action:
@@ -364,7 +355,7 @@ func _on_sub_action_reorder(source_item, target_item, drop_above: bool) -> void:
 	if source_idx == target_idx:
 		return
 
-	before_data_changed.emit()
+	before_contents_changed.emit()
 
 	_action.branch_actions.remove_at(source_idx)
 	if source_idx < target_idx:
@@ -375,7 +366,7 @@ func _on_sub_action_reorder(source_item, target_item, drop_above: bool) -> void:
 	_action.branch_actions.insert(insert_idx, source_data)
 
 	_update_branch_actions()
-	data_changed.emit()
+	contents_changed.emit(self)
 
 # ---------------------------------------------------------
 # Drag & Drop

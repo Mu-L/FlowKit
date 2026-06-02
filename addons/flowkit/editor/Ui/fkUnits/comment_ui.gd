@@ -5,7 +5,6 @@
 extends FKUnitUi
 class_name FKCommentUi
 
-signal delete_requested
 signal insert_comment_above_requested(comment_node)
 signal insert_comment_below_requested(comment_node)
 signal insert_event_above_requested(comment_node)
@@ -43,7 +42,7 @@ func _update_block_text():
 	if _comment_block.text != new_text:
 		_comment_block.text = new_text
 		update_display()
-		block_contents_changed.emit()
+		contents_changed.emit(self)
 		
 
 var _comment_block: FKComment:
@@ -153,8 +152,9 @@ func _validate_block(to_set: FKUnit):
 	return is_valid
 		
 		
-func _on_block_changed():
+func _on_contents_changed(node: FKUnitUi):
 	edit_mode_on = false
+	super._on_contents_changed(node)
 	
 func _get_drag_data(_at_position: Vector2) -> FKDragData:
 	if edit_mode_on:
@@ -243,7 +243,7 @@ func _listen_for_context_menu_events(menu: PopupMenu):
 func _on_context_menu_id_pressed(id: int):
 	match id:
 		_delete_choice:
-			delete_requested.emit()
+			delete_requested.emit(self)
 		_edit_choice:
 			_set_edit_mode(true)
 		_insert_event_above_choice:
